@@ -4,12 +4,12 @@ const ReviewSchema = new mongoose.Schema(
   {
     user: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     rating: {
       type: Number,
-      required: true,
+      required: false,
       min: [1, 'Rating must be at least 1'],
       max: [5, 'Rating cannot exceed 5'],
     },
@@ -26,6 +26,15 @@ const ReviewSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Helper function to create multilingual fields
+const createLocalizedField = () => ({
+  en: { type: String, required: true, trim: true },
+  te: { type: String, trim: true },
+  kn: { type: String, trim: true },
+  ta: { type: String, trim: true },
+  ml: { type: String, trim: true },
+});
+
 const ProductSchema = new mongoose.Schema(
   {
     productId: {
@@ -35,9 +44,8 @@ const ProductSchema = new mongoose.Schema(
       trim: true,
     },
     name: {
-      type: String,
+      type: createLocalizedField(),
       required: true,
-      trim: true,
     },
     category: {
       type: String,
@@ -51,6 +59,7 @@ const ProductSchema = new mongoose.Schema(
         'Nutrients',
         'Farm Machineries',
         'Others',
+        'Gardening',
       ],
     },
     tags: {
@@ -58,7 +67,7 @@ const ProductSchema = new mongoose.Schema(
       required: false,
     },
     description: {
-      type: String,
+      type: createLocalizedField(),
       trim: true,
     },
     price: {
@@ -109,28 +118,28 @@ const ProductSchema = new mongoose.Schema(
       },
     ],
     weight: {
-      type: Number, // in kilograms
+      type: Number,
       min: [0, 'Weight cannot be negative'],
     },
     dimensions: {
-      length: { type: Number, min: [0, 'Length cannot be negative'] }, // in centimeters
+      length: { type: Number, min: [0, 'Length cannot be negative'] },
       width: { type: Number, min: [0, 'Width cannot be negative'] },
       height: { type: Number, min: [0, 'Height cannot be negative'] },
     },
     applicationMethod: {
-      type: String,
+      type: createLocalizedField(),
       trim: true,
     },
     usageInstructions: {
-      type: String,
+      type: createLocalizedField(),
       trim: true,
     },
     safetyInstructions: {
-      type: String,
+      type: createLocalizedField(),
       trim: true,
     },
     composition: {
-      type: String,
+      type: createLocalizedField(),
       trim: true,
     },
     expirationDate: {
@@ -142,7 +151,6 @@ const ProductSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    // Fields specific to farm machineries
     power: {
       type: Number, // in horsepower
       min: [0, 'Power cannot be negative'],
@@ -157,15 +165,14 @@ const ProductSchema = new mongoose.Schema(
     },
     features: [
       {
-        type: String,
+        type: createLocalizedField(),
         trim: true,
       },
     ],
     warranty: {
-      type: String,
+      type: createLocalizedField(),
       trim: true,
     },
-    // **New Fields for Ratings and Reviews**
     averageRating: {
       type: Number,
       default: 0,
@@ -203,13 +210,11 @@ ProductSchema.pre('save', function (next) {
     }
   }
 
-  // Ensure finalPrice is not negative
   this.finalPrice = finalPrice > 0 ? finalPrice : 0;
 
   next();
 });
 
-// **Middleware to Calculate averageRating and reviewCount**
 ProductSchema.pre('save', function (next) {
   if (this.reviews && this.reviews.length > 0) {
     const totalRating = this.reviews.reduce((sum, review) => sum + review.rating, 0);

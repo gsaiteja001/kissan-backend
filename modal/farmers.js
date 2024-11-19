@@ -210,13 +210,24 @@ const CropDetailsSchema = new Schema({
 });
 
 
+const CartItemSchema = new Schema({
+  productId: { type: String, required: true },
+  sizeOption: {
+    size: { type: String, required: true },
+    price: { type: Number, required: true },
+  },
+  quantity: { type: Number, required: true, default: 1 },
+});
+
+
 
 // Main Farmer Schema
 const FarmerSchema = new Schema({
   farmerId: { type: String, required: true, unique: true, trim: true },
   fullName: { type: String, required: true, trim: true }, 
   profilePicture: { type: String, required: false },
-  phoneNumber: { type: String, required: true }, 
+  phoneNumber: { type: String, required: true },
+  cartItems: { type: [CartItemSchema], required: false, default: [] },
   address: AddressSchema,
   location: LocationSchema,
   farms: { type: [FarmDetailsSchema], required: false },

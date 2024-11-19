@@ -54,6 +54,15 @@ const Diseases = require('./modal/Disease');
 const farmerController = require('./controllers/farmerController');
 
 
+const agricultureLandRental = require('./modal/agricultureLandRental')
+
+
+const FertilizerRecommendation = require('./modal/fertilizerRecommendations');
+
+const translateProduct = require('./utils/translateProduct');
+
+
+
 // Initialize Firebase Admin SDK
 const admin = require('firebase-admin');
 const serviceAccount = require('./serviceAccountKey.json');
@@ -119,6 +128,37 @@ app.use(bodyParser.urlencoded({
 }));
 
 
+
+
+// GET route to fetch all fertilizer recommendations
+app.get('/fertilizerRecommendations', async (req, res) => {
+  try {
+      const recommendations = await FertilizerRecommendation.find();
+      res.status(200).json(recommendations);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'An error occurred while fetching the data' });
+  }
+});
+
+// POST route to upload JSON data
+app.post('/upload/fertilizerRecommendations', async (req, res) => {
+  try {
+      const data = req.body;
+      // Validate the data
+      if (!Array.isArray(data)) {
+          return res.status(400).json({ error: 'Data should be an array of objects' });
+      }
+      // Insert data into MongoDB
+      await FertilizerRecommendation.insertMany(data);
+      res.status(200).json({ message: 'Data uploaded successfully' });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'An error occurred while uploading data' });
+  }
+});
+
+
 app.get('/api/crops', async (req, res) => {
   try {
     const crops = await cropDisease.distinct('cropname');
@@ -152,7 +192,6 @@ app.get('/api/diseases', async (req, res) => {
     res.status(500).json({ error: 'Server error while fetching diseases.' });
   }
 });
-
 
 app.post('/api/diseases/search', async (req, res) => {
   const { cropname, name } = req.body;
@@ -653,7 +692,7 @@ const addServiceToCrop = async (cropId, serviceData) => {
 };
 
 const serviceData = {
-  serviceProviderId: '60d21b4967d0d8992e610c86',
+  ProviderId: '60d21b4967d0d8992e610c86',
   serviceType: 'Spraying',
   serviceDate: new Date('2024-05-01'),
   cost: 1500, 
@@ -1032,6 +1071,65 @@ app.put('/:farmerId/crops', async (req, res) => {
   }
 });
 
+
+app.get('/farmers/:farmerId/cart', async (req, res) => {
+  const { farmerId } = req.params;
+  try {
+    const farmer = await farmers.findOne({ farmerId });
+    if (!farmer) {
+      return res.status(404).json({ message: 'Farmer not found.' });
+    }
+    res.status(200).json({ cartItems: farmer.cartItems });
+  } catch (error) {
+    console.error('Error fetching cart items:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+
+app.put('/farmers/:farmerId/cart', async (req, res) => {
+  const { farmerId } = req.params;
+  const { cartItems } = req.body;
+
+  try {
+    if (!Array.isArray(cartItems)) {
+      return res.status(400).json({ message: 'cartItems must be an array.' });
+    }
+
+    // Validate each cartItem
+    const isValid = cartItems.every(item => {
+      return item &&
+        typeof item.productId === 'string' && item.productId.trim() !== '' &&
+        item.sizeOption &&
+        typeof item.sizeOption.size === 'string' && item.sizeOption.size.trim() !== '' &&
+        typeof item.sizeOption.price === 'number' &&
+        typeof item.quantity === 'number' && item.quantity > 0;
+    });
+
+    if (!isValid) {
+      return res.status(400).json({ message: 'Each cartItem must have productId, sizeOption (size and price), and quantity.' });
+    }
+
+    // Update cartItems for the specified farmer
+    const farmer = await farmers.findOneAndUpdate(
+      { farmerId },
+      { cartItems },
+      { new: true }
+    );
+
+    if (!farmer) {
+      return res.status(404).json({ message: 'Farmer not found.' });
+    }
+
+    res.status(200).json({ message: 'Cart updated successfully.', cartItems: farmer.cartItems });
+  } catch (error) {
+    console.error('Error updating cart items:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+
+
 app.get('/farmers/savedaddress/:id', async (req, res) => {
   try {
     const farmerId = req.params.id;
@@ -1284,8 +1382,8 @@ app.post('/updateFarmerCrops', async (req, res) => {
   }
 });
 
+//--------------------------------------------------------------------------------------products --------------------------------------------------
 
-  // Add New Product
 app.post('/products', async (req, res) => {
     try {
       const productData = req.body;
@@ -1304,23 +1402,134 @@ app.post('/products', async (req, res) => {
   });
 
 
-  // get all products
 
-  app.get('/products', async (req, res) => {
+  app.post('/bulk-upload/translatedProducts', async (req, res) => {
+    const products = req.body.products; // Expecting { products: [ ... ] }
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ message: 'Products data is required and should be an array.' });
+    }
     try {
-      const products = await Product.find();
-      res.status(200).json(products);
+      // Pre-insert calculations can be done here if needed
+      // Use insertMany with validation
+      const insertedProducts = await Product.insertMany(products, { ordered: false, runValidators: true });
+  
+      res.status(201).json({
+        message: 'Bulk upload successful.',
+        count: insertedProducts.length,
+        products: insertedProducts,
+      });
     } catch (error) {
-      res.status(500).json({ message: 'Error fetching products.', error: error.message });
+      console.error('Bulk upload error:', error);
+  
+      // Handle duplicate key errors (e.g., duplicate productId or sku)
+      if (error.code === 11000) {
+        const duplicatedField = Object.keys(error.keyPattern)[0];
+        return res.status(409).json({ message: `Duplicate value for field: ${duplicatedField}` });
+      }
+  
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        // Extract detailed validation errors
+        const errors = Object.values(error.errors).map(err => ({
+          field: err.path,
+          message: err.message,
+        }));
+        return res.status(400).json({ message: 'Validation Error', errors });
+      }
+  
+      res.status(500).json({ message: 'Server error during bulk upload.', error: error.message });
     }
   });
+  
+
+app.get('/api/products/:id', async (req, res) => {
+  const productId = req.params.id;
+  const lang = req.query.lang || 'en';
+
+  try {
+    const product = await Product.findOne({ productId });
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const getTranslatedField = (field) => {
+      if (field && typeof field === 'object') {
+        if (field[lang] && typeof field[lang] === 'string') {
+          return field[lang];
+        } else if (field.en && typeof field.en === 'string') {
+          return field.en;
+        }
+      }
+      return 'Translation not available';
+    };
+    const translatedProduct = {
+      discount: product.discount,
+      averageRating: product.averageRating,
+      reviewCount: product.reviewCount,
+      _id: product._id,
+      productId: product.productId,
+      name: getTranslatedField(product.name),
+      category: product.category,
+      description: getTranslatedField(product.description),
+      price: product.price,
+      manufacturer: product.manufacturer,
+      sku: product.sku,
+      stockQuantity: product.stockQuantity,
+      images: product.images,
+      weight: product.weight,
+      usageInstructions: getTranslatedField(product.usageInstructions),
+      composition: getTranslatedField(product.composition),
+      expirationDate: product.expirationDate,
+      certifications: product.certifications,
+      features: product.features.map((feature) => getTranslatedField(feature)),
+      __v: product.__v,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+      finalPrice: product.finalPrice,
+      tags: product.tags,
+      reviews: product.reviews,
+    };
+
+    res.json(translatedProduct);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 
-  // get single peoduct by ID
+app.get('/api/products', async (req, res) => {
+  const lang = req.query.lang || 'en';
+
+  try {
+    const products = await Product.find();
+
+    const translatedProducts = products.map((product) => translateProduct(product, lang));
+
+    res.json(translatedProducts);
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
+  // // get all products
+  // app.get('/products', async (req, res) => {
+  //   try {
+  //     const products = await Product.find();
+  //     res.status(200).json(products);
+  //   } catch (error) {
+  //     res.status(500).json({ message: 'Error fetching products.', error: error.message });
+  //   }
+  // });
+
 
   app.get('/products/:id', async (req, res) => {
     try {
-      const product = await Product.findById(req.params.id);
+      const product = await Product.findOne(req.params.id);
       if (!product) {
         return res.status(404).json({ message: 'Product not found.' });
       }
@@ -1329,6 +1538,25 @@ app.post('/products', async (req, res) => {
       res.status(500).json({ message: 'Error fetching product.', error: error.message });
     }
   });
+
+
+
+
+  app.get('/productdetails/cart', async (req, res) => {
+    try {
+      const { ids } = req.query; 
+      if (!ids) {
+        return res.status(400).json({ message: 'No product IDs provided.' });
+      }
+      const productIds = ids.split(',');
+      const products = await Product.find({ productId: { $in: productIds } });
+      res.status(200).json(products);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching products.', error: error.message });
+    }
+  });
+
+
 
 
  // update product by ID
@@ -1357,7 +1585,7 @@ app.post('/products', async (req, res) => {
   //delete product by ID
   app.delete('/products/:id', async (req, res) => {
     try {
-      const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+      const deletedProduct = await Product.findOne({ productId:req.params.id});
       if (!deletedProduct) {
         return res.status(404).json({ message: 'Product not found.' });
       }
@@ -1371,7 +1599,7 @@ app.post('/products', async (req, res) => {
     try {
       const products = await Product.find();
       for (const product of products) {
-        await product.save(); // Triggers pre-save middleware
+        await product.save(); 
       }
       res.status(200).json({ message: 'Final prices updated successfully.' });
     } catch (error) {
@@ -1380,48 +1608,71 @@ app.post('/products', async (req, res) => {
   });
 
 
-  // Bulk Upload Products
-app.post('/products/bulk', async (req, res) => {
+  app.get('/similarProducts', async (req, res) => {
+    console.log('Received request for /api/products/similar');
+    console.log('Query Parameters:', req.query);
+    
+    const lang = req.query.lang || 'en';
     try {
-      const productsData = req.body; // Expecting an array of product objects
-  
-      if (!Array.isArray(productsData) || productsData.length === 0) {
-        return res.status(400).json({ message: 'Invalid input: expecting an array of product data.' });
+      const { tags, productId, limit = 10 } = req.query;
+      if (!tags) {
+        console.log('Tags not provided.');
+        return res.status(400).json({ message: 'Tags are required.' });
       }
-  
-      const newProducts = productsData.map((productData) => {
-        // Generate unique productId
-        const productId = `productId${Date.now()}${Math.floor(Math.random() * 10000)}`;
-  
-        // Assign the generated productId to the product data
-        return {
-          ...productData,
-          productId,
-        };
-      });
-  
-      // Insert the products into the database
-      const savedProducts = await Product.insertMany(newProducts, { ordered: false });
-  
-      res.status(201).json({ message: 'Products added successfully.', products: savedProducts });
+      const tagsArray = tags.split(',').map(tag => tag.trim());
+      const query = {
+        tags: { $in: tagsArray },
+      };
+      if (productId) {
+        query.productId = { $ne: productId };
+      }
+      console.log('Database Query:', query);
+      const similarProducts = await Product.find(query).limit(parseInt(limit)).exec();
+      console.log(`Found ${similarProducts.length} similar products.`);
+      const translatedSimilarProducts = similarProducts.map((product) => translateProduct(product, lang));
+      res.json(translatedSimilarProducts);
     } catch (error) {
-      console.error('Error adding products:', error);
+      console.error('Error fetching similar products:', error);
+      res.status(500).json({ message: 'Server Error' });
+    }
+  });
   
-      if (error.name === 'BulkWriteError') {
-        const errors = error.writeErrors.map((err) => ({
-          index: err.index,
-          code: err.code,
-          errmsg: err.errmsg,
-          op: err.op,
-        }));
+
+
+
+app.get('/similarManufacturer', async (req, res) => {
+    console.log('Received request for /api/products/manufacturer');
+    console.log('Query Parameters:', req.query);
   
-        res.status(400).json({
-          message: 'Some products could not be added due to validation errors.',
-          errors: errors,
-        });
-      } else {
-        res.status(500).json({ message: 'Error adding products.', error: error.message });
+    const lang = req.query.lang || 'en';
+  
+    try {
+      const { manufacturer, productId, limit = 10 } = req.query;
+  
+      if (!manufacturer) {
+        console.log('Manufacturer not provided.');
+        return res.status(400).json({ message: 'Manufacturer is required.' });
       }
+      
+      const query = {
+        manufacturer: manufacturer.trim(),
+      };
+  
+      if (productId) {
+        query.productId = { $ne: productId };
+      }
+  
+      console.log('Database Query:', query);
+  
+      const manufacturerProducts = await Product.find(query).limit(parseInt(limit)).exec();
+      console.log(`Found ${manufacturerProducts.length} manufacturer products.`);
+  
+      const translatedManufacturerProducts = manufacturerProducts.map((product) => translateProduct(product, lang));
+  
+      res.json(translatedManufacturerProducts);
+    } catch (error) {
+      console.error('Error fetching manufacturer products:', error);
+      res.status(500).json({ message: 'Server Error' });
     }
   });
 
@@ -1573,7 +1824,81 @@ app.get('/groups', async (req, res) => {
   }
 });
 
-  
+  //------------------------------------------------------------------ agriculture Land Renting -------------------------------------------
+
+
+const generatePostedAdId = () => {
+  const now = new Date();
+  const timestamp = now.getTime();
+  const randomNum = Math.floor(Math.random() * 10000);
+  return `LandRentingPostId${timestamp}${randomNum}`;
+};
+
+app.get('/api/agriLandRentalPosts', async (req, res) => {
+  try {
+    const ads = await agricultureLandRental.find().sort({ postedDate: -1 });
+    res.json(ads);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+
+app.post('/api/agriLandRentalPost', async (req, res) => {
+  try {
+    const adData = req.body;
+
+    adData.postedAdId = generatePostedAdId();
+
+    if (
+      !adData.location ||
+      !adData.location.coordinates ||
+      !Array.isArray(adData.location.coordinates) ||
+      adData.location.coordinates.length !== 2
+    ) {
+      return res
+        .status(400)
+        .json({ message: 'Location coordinates are required and must be an array of [longitude, latitude].' });
+    }
+    const newAd = new agricultureLandRental(adData);
+
+    const savedAd = await newAd.save();
+
+    res.status(201).json(savedAd);
+  } catch (error) {
+    console.error(error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({ message: messages.join('. ') });
+    }
+    // Handle duplicate postedAdId error
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Duplicate Ad ID. Please try again.' });
+    }
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+
+
+// GET /api/agriLandRentalPost/:postedAdId
+app.get('/agriLandRentalPost/:postedAdId', async (req, res) => {
+  const { postedAdId } = req.params;
+
+  try {
+    const ad = await agricultureLandRental.findOne({ postedAdId });
+
+    if (!ad) {
+      return res.status(404).json({ message: 'Ad not found' });
+    }
+
+    res.json(ad);
+  } catch (error) {
+    console.error('Error fetching ad by postedAdId:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
   
 
 
