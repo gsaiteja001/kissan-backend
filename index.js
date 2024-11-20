@@ -1004,26 +1004,20 @@ app.get('/farmers/:id', async (req, res) => {
 });
 
 
-// PUT Endpoint to Update userType Farmer Profile
 app.put('/userType/farmers/:id', async (req, res) => {
   const farmerId = req.params.id;
   const updateData = req.body;
 
   try {
-    // Find the farmer by farmerId
-    const farmer = await farmers.findOne({ farmerId: farmerId });
-    if (!farmer) {
+    const updatedFarmer = await farmers.findOneAndUpdate(
+      { farmerId: farmerId },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedFarmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
     }
-
-    // Update the farmer's data
-    Object.assign(farmer, updateData);
-
-    // Validate before saving
-    await farmer.validate();
-
-    // Save the updated farmer
-    const updatedFarmer = await farmer.save();
 
     res.status(200).json(updatedFarmer);
   } catch (error) {
@@ -1036,6 +1030,7 @@ app.put('/userType/farmers/:id', async (req, res) => {
     res.status(500).json({ message: 'Server Error' });
   }
 });
+
 
 
 
