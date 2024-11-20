@@ -1011,7 +1011,7 @@ app.put('/userType/farmers/:id', async (req, res) => {
 
   try {
     // Find the farmer by farmerId
-    const farmer = await Farmer.findOne({ farmerId: farmerId });
+    const farmer = await farmers.findOne({ farmerId: farmerId });
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
     }
