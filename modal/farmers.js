@@ -219,9 +219,83 @@ const CartItemSchema = new Schema({
   quantity: { type: Number, required: true, default: 1 },
 });
 
+// Enumerations for User Types and Subcategories
+const USER_TYPES = ['farmer', 'gardener', 'animalHusbandry'];
 
+const FARMER_CATEGORIES = [
+  'Subsistence/Backyard Farmer',
+  'Commercial Farmer',
+  'Mixed Farmer',
+  'Plantation Farmer',
+  'Cooperative Farmer'
+];
 
-// Main Farmer Schema
+const GARDENER_CATEGORIES = [
+  'Rooftop Vegetable Planter',
+  'Balcony Planter',
+  'Home Decor Planter'
+];
+
+const GARDENER_EXPERIENCES = ['Newbie', 'Seasonal', 'Passionate'];
+const GARDENER_CHOICES = ['Organic', 'Hybrid'];
+
+const ANIMAL_HUSBANDRY_CATEGORIES = ['Cattle', 'Poultry', 'Fishery'];
+
+// Subschema for Farmer Details
+const FarmerTypeDetailsSchema = new Schema({
+  categories: {
+    type: [String],
+    enum: FARMER_CATEGORIES,
+    required: function() {
+      return this.userTypes.includes('farmer');
+    }
+  }
+}, { _id: false });
+
+// Subschema for Gardener Details
+const GardenerTypeDetailsSchema = new Schema({
+  categories: {
+    type: [String],
+    enum: GARDENER_CATEGORIES,
+    required: function() {
+      return this.userTypes.includes('gardener');
+    }
+  },
+  userExperience: {
+    type: String,
+    enum: GARDENER_EXPERIENCES,
+    required: function() {
+      return this.userTypes.includes('gardener');
+    }
+  },
+  userChoice: {
+    type: String,
+    enum: GARDENER_CHOICES,
+    required: function() {
+      return this.userTypes.includes('gardener');
+    }
+  }
+}, { _id: false });
+
+// Subschema for Animal Husbandry Details
+const AnimalHusbandryTypeDetailsSchema = new Schema({
+  categories: {
+    type: [String],
+    enum: ANIMAL_HUSBANDRY_CATEGORIES,
+    required: function() {
+      return this.userTypes.includes('animalHusbandry');
+    }
+  },
+  breedName: {
+    type: String,
+    required: function() {
+      return this.userTypes.includes('animalHusbandry');
+    },
+    trim: true
+  }
+}, { _id: false });
+
+// Main Farmer Schema with Upgraded Features
 const FarmerSchema = new Schema({
   farmerId: { type: String, required: true, unique: true, trim: true },
   fullName: { type: String, required: true, trim: true }, 
@@ -283,11 +357,32 @@ const FarmerSchema = new Schema({
   },
   profileCompleteness: {
     type: Number,
-    default: 0, // Percentage
+    default: 0,
     min: 0,
     max: 100,
     required: false,
   },
+  userTypes: {
+    type: [String],
+    enum: USER_TYPES,
+    required: false,
+    validate: {
+      validator: function(value) {
+        return value.length > 0;
+      },
+      message: 'At least one user type must be specified.'
+    }
+  },
+  aadharNumber: { type: String, required: false },
+  aadharVerificationStatus: {
+    type: String,
+    enum: ['Verified', 'Not Verified', 'Pending', 'Invalid'],
+    default: 'Not Verified',
+    required: false,
+  },
+  farmerDetails: FarmerTypeDetailsSchema,
+  gardenerDetails: GardenerTypeDetailsSchema,
+  animalHusbandryDetails: AnimalHusbandryTypeDetailsSchema,
   createdAt: { type: Date, default: Date.now, required: false },
 });
 
