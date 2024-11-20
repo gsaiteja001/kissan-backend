@@ -244,12 +244,12 @@ const ANIMAL_HUSBANDRY_CATEGORIES = ['Cattle', 'Poultry', 'Fishery'];
 // Subschema for Farmer Details
 const FarmerTypeDetailsSchema = new Schema({
   categories: {
-    type: [String],
-    enum: FARMER_CATEGORIES,
-    required: function() {
-      return this.userTypes.includes('farmer');
-    }
+  type: [String],
+  enum: FARMER_CATEGORIES,
+  required: function() {
+    return Array.isArray(this.userTypes) && this.userTypes.includes('farmer');
   }
+}
 }, { _id: false });
 
 // Subschema for Gardener Details
@@ -258,21 +258,21 @@ const GardenerTypeDetailsSchema = new Schema({
     type: [String],
     enum: GARDENER_CATEGORIES,
     required: function() {
-      return this.userTypes.includes('gardener');
+      return Array.isArray(this.userTypes) && this.userTypes.includes('gardener');
     }
   },
   userExperience: {
     type: String,
     enum: GARDENER_EXPERIENCES,
     required: function() {
-      return this.userTypes.includes('gardener');
+      return Array.isArray(this.userTypes) && this.userTypes.includes('gardener');
     }
   },
   userChoice: {
     type: String,
     enum: GARDENER_CHOICES,
     required: function() {
-      return this.userTypes.includes('gardener');
+      return Array.isArray(this.userTypes) && this.userTypes.includes('gardener');
     }
   }
 }, { _id: false });
@@ -283,13 +283,13 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
     type: [String],
     enum: ANIMAL_HUSBANDRY_CATEGORIES,
     required: function() {
-      return this.userTypes.includes('animalHusbandry');
+      return Array.isArray(this.userTypes) && this.userTypes.includes('animalHusbandry');
     }
   },
   breedName: {
     type: String,
     required: function() {
-      return this.userTypes.includes('animalHusbandry');
+      return Array.isArray(this.userTypes) && this.userTypes.includes('animalHusbandry');
     },
     trim: true
   }
@@ -365,7 +365,7 @@ const FarmerSchema = new Schema({
   userTypes: {
     type: [String],
     enum: USER_TYPES,
-    required: false,
+    required: [true, 'At least one user type must be specified.'],
     validate: {
       validator: function(value) {
         return value.length > 0;
