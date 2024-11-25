@@ -299,7 +299,7 @@ const SubscriptionSchema = new Schema({
   subscriptionId: { type: String, required: false },
   plan: { 
     type: String, 
-    enum: ['gold', 'bronze'], 
+    enum: ['gold', 'silver'], 
     required: true,
     lowercase: true,
     trim: true
@@ -395,7 +395,7 @@ const FarmerSchema = new Schema({
   userSubscriptions: [
     {
       subscriptionId: { type: String, required: false },
-      planType: { type: String, required: false },
+      planType: { type: String, enum: ['gold', 'silver'], required: false },
       details: { type: String, required: false },
       period: { type: String, required: false },
       startDate: { type: Date, default: Date.now, required: false },
