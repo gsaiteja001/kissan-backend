@@ -998,7 +998,7 @@ app.post('/api/subscriptions', async (req, res) => {
   }
 
   // Validate planType
-  const validPlans = ['gold', 'bronze'];
+  const validPlans = ['gold', 'silver'];
   if (!validPlans.includes(planType.toLowerCase())) {
     return res.status(400).json({ message: 'Invalid plan type' });
   }
