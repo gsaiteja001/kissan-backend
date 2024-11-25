@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); 
 const { Schema } = mongoose;
 
 // Subschema for Address
@@ -9,7 +9,6 @@ const AddressSchema = new Schema({
   postalCode: { type: String, required: false },
   country: { type: String, required: false },
 });
-
 
 // Updated Subschema for Location (GeoJSON Point)
 const LocationSchema = new Schema({
@@ -126,7 +125,6 @@ const NotificationPreferencesSchema = new Schema({
   inApp: { type: Boolean, default: true, required: false },
 });
 
-
 const RecommendedProductSchema = new Schema({
   productId: { type: String, required: false },
   productName: { type: String, required: false },
@@ -192,23 +190,22 @@ const CropDetailsSchema = new Schema({
     required: false,
   },
 
- farmId: {
-  type: String,
-  required: false,
-  trim: true,
-  validate: {
-    validator: function(value) {
-      // 'this' refers to the current crop document
-      return this.ownerDocument().farms.some(farm => farm.farmId === value);
+  farmId: {
+    type: String,
+    required: false,
+    trim: true,
+    validate: {
+      validator: function(value) {
+        // 'this' refers to the current crop document
+        return this.ownerDocument().farms.some(farm => farm.farmId === value);
+      },
+      message: props => `Farm ID '${props.value}' does not exist in the farmer's farms.`,
     },
-    message: props => `Farm ID '${props.value}' does not exist in the farmer's farms.`,
   },
-},
   area: { type: Number, required: false }, // in sq meters
   soilType: { type: String, required: false },
   individualProgress: { type: Number, required: false },
 });
-
 
 const CartItemSchema = new Schema({
   productId: { type: String, required: true },
@@ -293,10 +290,9 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
   }
 }, { _id: false });
 
-
-
 // 1. Define the SubscriptionSchema
- subscriptionId: { type: String, required: false },
+const SubscriptionSchema = new Schema({
+  subscriptionId: { type: String, required: false },
   plan: { 
     type: String, 
     enum: ['gold', 'silver'], 
@@ -398,7 +394,7 @@ const FarmerSchema = new Schema({
       planType: { 
           type: String, 
           enum: ['gold', 'silver'], 
-          required: false ,
+          required: false,
           lowercase: true,
           trim: true
         },
@@ -480,7 +476,7 @@ const FarmerSchema = new Schema({
 
 // Virtuals for computed properties
 FarmerSchema.virtual('fullAddress').get(function () {
-  return ${this.address.street}, ${this.address.city}, ${this.address.state}, ${this.address.country};
+  return `${this.address.street}, ${this.address.city}, ${this.address.state}, ${this.address.country}`;
 });
 
 // Export the Farmer model
