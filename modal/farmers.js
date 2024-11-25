@@ -201,7 +201,7 @@ const CropDetailsSchema = new Schema({
         // 'this' refers to the current crop document
         return this.ownerDocument().farms.some(farm => farm.farmId === value);
       },
-      message: props => `Farm ID '${props.value}' does not exist in the farmer's farms.`,
+      message: props => Farm ID '${props.value}' does not exist in the farmer's farms.,
     },
   },
   area: { type: Number, required: false }, // in sq meters
@@ -299,7 +299,7 @@ const SubscriptionSchema = new Schema({
   subscriptionId: { type: String, required: false },
   plan: { 
     type: String, 
-    enum: ['gold', 'bronze'], 
+    enum: ['gold', 'silver'], 
     required: true,
     lowercase: true,
     trim: true
@@ -316,7 +316,7 @@ const SubscriptionSchema = new Schema({
         };
         return value === priceMap[this.plan];
       },
-      message: props => `Price for plan '${props.value}' is invalid.`
+      message: props => Price for plan '${props.value}' is invalid.
     }
   },
   
@@ -395,12 +395,18 @@ const FarmerSchema = new Schema({
   userSubscriptions: [
     {
       subscriptionId: { type: String, required: false },
-      planType: { type: String, required: false },
+      planType: { 
+          type: String, 
+          enum: ['gold', 'silver'], 
+          required: false ,
+          lowercase: true,
+          trim: true
+        },
       details: { type: String, required: false },
       period: { type: String, required: false },
       startDate: { type: Date, default: Date.now, required: false },
-      endDate: { type: Date, required: true },
-      amountPaid: { type: String, required: true },
+      endDate: { type: Date, required: false  },
+      amountPaid: { type: String, required: false },
       status: { type: String, enum: ['active', 'expired', 'cancelled'], default: 'active' },
     },
   ],
@@ -474,7 +480,7 @@ const FarmerSchema = new Schema({
 
 // Virtuals for computed properties
 FarmerSchema.virtual('fullAddress').get(function () {
-  return `${this.address.street}, ${this.address.city}, ${this.address.state}, ${this.address.country}`;
+  return ${this.address.street}, ${this.address.city}, ${this.address.state}, ${this.address.country};
 });
 
 // Export the Farmer model
