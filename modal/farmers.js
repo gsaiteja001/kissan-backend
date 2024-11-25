@@ -192,18 +192,18 @@ const CropDetailsSchema = new Schema({
     required: false,
   },
 
-  farmId: {
-    type: String,
-    required: false,
-    trim: true,
-    validate: {
-      validator: function(value) {
-        // 'this' refers to the current crop document
-        return this.ownerDocument().farms.some(farm => farm.farmId === value);
-      },
-      message: props => Farm ID '${props.value}' does not exist in the farmer's farms.,
+ farmId: {
+  type: String,
+  required: false,
+  trim: true,
+  validate: {
+    validator: function(value) {
+      // 'this' refers to the current crop document
+      return this.ownerDocument().farms.some(farm => farm.farmId === value);
     },
+    message: props => `Farm ID '${props.value}' does not exist in the farmer's farms.`,
   },
+},
   area: { type: Number, required: false }, // in sq meters
   soilType: { type: String, required: false },
   individualProgress: { type: Number, required: false },
@@ -247,7 +247,7 @@ const FarmerTypeDetailsSchema = new Schema({
     type: [String],
     enum: FARMER_CATEGORIES,
     required: function() {
-      return this.userTypes.includes('farmer');
+      return this.parent().userTypes && this.parent().userTypes.includes('farmer');
     }
   }
 }, { _id: false });
@@ -258,21 +258,21 @@ const GardenerTypeDetailsSchema = new Schema({
     type: [String],
     enum: GARDENER_CATEGORIES,
     required: function() {
-      return this.userTypes.includes('gardener');
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
     }
   },
   userExperience: {
     type: String,
     enum: GARDENER_EXPERIENCES,
     required: function() {
-      return this.userTypes.includes('gardener');
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
     }
   },
   userChoice: {
     type: String,
     enum: GARDENER_CHOICES,
     required: function() {
-      return this.userTypes.includes('gardener');
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
     }
   }
 }, { _id: false });
@@ -283,7 +283,7 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
     type: [String],
     enum: ANIMAL_HUSBANDRY_CATEGORIES,
     required: function() {
-      return this.userTypes.includes('animalHusbandry');
+      return this.parent().userTypes && this.parent().userTypes.includes('animalHusbandry');
     }
   },
   breedName: {
@@ -292,6 +292,7 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
     trim: true
   }
 }, { _id: false });
+
 
 
 // 1. Define the SubscriptionSchema
