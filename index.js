@@ -988,6 +988,70 @@ app.post(
 
 // --------------------------------------------------------------  API'S farmers -------------------------------------------------------------------
 
+
+// POST /api/subscriptions - Create a new subscription
+app.post('/api/subscriptions', async (req, res) => {
+  const { subscriptionId, planType, period, startDate, endDate, status } = req.body;
+
+  // Basic validation
+  if (!subscriptionId || !planType || !period || !startDate || !endDate || !status) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  // Validate planType
+  const validPlans = ['gold', 'bronze'];
+  if (!validPlans.includes(planType.toLowerCase())) {
+    return res.status(400).json({ message: 'Invalid plan type' });
+  }
+
+  // Validate period
+  const validPeriods = ['1_month', '3_month', '6_month', '1_year'];
+  if (!validPeriods.includes(period)) {
+    return res.status(400).json({ message: 'Invalid subscription period' });
+  }
+
+  // Validate status
+  const validStatuses = ['active', 'expired', 'cancelled'];
+  if (!validStatuses.includes(status.toLowerCase())) {
+    return res.status(400).json({ message: 'Invalid subscription status' });
+  }
+
+  try {
+    // Find the farmer by farmerId
+    const farmer = await farmers.findOne({ farmerId: req.farmerId });
+    if (!farmer) {
+      return res.status(404).json({ message: 'Farmer not found' });
+    }
+
+    // Check if subscriptionId already exists
+    const existingSubscription = farmer.userSubscriptions.find(sub => sub.subscriptionId === subscriptionId);
+    if (existingSubscription) {
+      return res.status(400).json({ message: 'Subscription ID already exists' });
+    }
+
+    // Create the subscription object
+    const newSubscription = {
+      subscriptionId,
+      planType,
+      period,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      status,
+    };
+
+    // Push the new subscription into userSubscriptions array
+    farmer.userSubscriptions.push(newSubscription);
+
+    // Save the farmer document
+    await farmer.save();
+
+    return res.status(200).json({ message: 'Subscription created successfully', subscription: newSubscription });
+  } catch (error) {
+    console.error('Error creating subscription:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 app.get('/farmers/:id', async (req, res) => {
   try {
     const farmerId = req.params.id;
