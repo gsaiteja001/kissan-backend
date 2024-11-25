@@ -296,8 +296,7 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
 
 
 // 1. Define the SubscriptionSchema
-const SubscriptionSchema = new Schema({
-  subscriptionId: { type: String, required: false },
+ subscriptionId: { type: String, required: false },
   plan: { 
     type: String, 
     enum: ['gold', 'silver'], 
@@ -313,11 +312,11 @@ const SubscriptionSchema = new Schema({
         // Define pricing based on plan
         const priceMap = {
           gold: 700,
-          bronze: 350
+          silver: 350 // Updated from 'bronze' to 'silver'
         };
         return value === priceMap[this.plan];
       },
-      message: props => Price for plan '${props.value}' is invalid.
+      message: props => `Price for plan '${props.value}' is invalid.`
     }
   },
   
