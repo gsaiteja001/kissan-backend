@@ -991,10 +991,9 @@ app.post(
 
 // POST /api/subscriptions - Create a new subscription
 app.post('/api/subscriptions', async (req, res) => {
-  const { subscriptionId, planType, period, startDate, endDate, status } = req.body;
+  const { subscriptionId, planType, period, startDate, endDate, status, farmerId  } = req.body;
 
-  // Basic validation
-  if (!subscriptionId || !planType || !period || !startDate || !endDate || !status) {
+  if (!subscriptionId || !planType || !period || !startDate || !endDate || !status || !farmerId) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
@@ -1018,7 +1017,7 @@ app.post('/api/subscriptions', async (req, res) => {
 
   try {
     // Find the farmer by farmerId
-    const farmer = await farmers.findOne({ farmerId: req.farmerId });
+    const farmer = await farmers.findOne({ farmerId: farmerId  });
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found' });
     }
