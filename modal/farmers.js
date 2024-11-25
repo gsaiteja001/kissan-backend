@@ -244,12 +244,12 @@ const ANIMAL_HUSBANDRY_CATEGORIES = ['Cattle', 'Poultry', 'Fishery'];
 // Subschema for Farmer Details
 const FarmerTypeDetailsSchema = new Schema({
   categories: {
-  type: [String],
-  enum: FARMER_CATEGORIES,
-  required: function() {
-    return Array.isArray(this.userTypes) && this.userTypes.includes('farmer');
+    type: [String],
+    enum: FARMER_CATEGORIES,
+    required: function() {
+      return this.userTypes.includes('farmer');
+    }
   }
-}
 }, { _id: false });
 
 // Subschema for Gardener Details
@@ -258,21 +258,21 @@ const GardenerTypeDetailsSchema = new Schema({
     type: [String],
     enum: GARDENER_CATEGORIES,
     required: function() {
-      return Array.isArray(this.userTypes) && this.userTypes.includes('gardener');
+      return this.userTypes.includes('gardener');
     }
   },
   userExperience: {
     type: String,
     enum: GARDENER_EXPERIENCES,
     required: function() {
-      return Array.isArray(this.userTypes) && this.userTypes.includes('gardener');
+      return this.userTypes.includes('gardener');
     }
   },
   userChoice: {
     type: String,
     enum: GARDENER_CHOICES,
     required: function() {
-      return Array.isArray(this.userTypes) && this.userTypes.includes('gardener');
+      return this.userTypes.includes('gardener');
     }
   }
 }, { _id: false });
@@ -283,17 +283,94 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
     type: [String],
     enum: ANIMAL_HUSBANDRY_CATEGORIES,
     required: function() {
-      return Array.isArray(this.userTypes) && this.userTypes.includes('animalHusbandry');
+      return this.userTypes.includes('animalHusbandry');
     }
   },
   breedName: {
     type: String,
-    required: function() {
-      return Array.isArray(this.userTypes) && this.userTypes.includes('animalHusbandry');
-    },
+    required: false,
     trim: true
   }
 }, { _id: false });
+
+
+// 1. Define the SubscriptionSchema
+const SubscriptionSchema = new Schema({
+  subscriptionId: { type: String, required: false },
+  plan: { 
+    type: String, 
+    enum: ['gold', 'bronze'], 
+    required: true,
+    lowercase: true,
+    trim: true
+  },
+  price: { 
+    type: Number, 
+    required: true,
+    validate: {
+      validator: function(value) {
+        // Define pricing based on plan
+        const priceMap = {
+          gold: 700,
+          bronze: 350
+        };
+        return value === priceMap[this.plan];
+      },
+      message: props => `Price for plan '${props.value}' is invalid.`
+    }
+  },
+  
+  discount: { 
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  duration: { 
+    type: String, 
+    enum: ['monthly', '3 months', '6 months', '1 year'], 
+    required: true 
+  },
+  startDate: { 
+    type: Date, 
+    default: Date.now, 
+    required: true 
+  },
+  endDate: { 
+    type: Date, 
+    required: true 
+  },
+  status: { 
+    type: String, 
+    enum: ['active', 'expired', 'cancelled'], 
+    default: 'active' 
+  },
+}, { _id: false });
+
+// 2. Middleware to calculate endDate based on duration
+SubscriptionSchema.pre('validate', function(next) {
+  if (this.startDate && this.duration) {
+    let endDate = new Date(this.startDate);
+    switch (this.duration) {
+      case 'monthly':
+        endDate.setMonth(endDate.getMonth() + 1);
+        break;
+      case '3 months':
+        endDate.setMonth(endDate.getMonth() + 3);
+        break;
+      case '6 months':
+        endDate.setMonth(endDate.getMonth() + 6);
+        break;
+      case '1 year':
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        break;
+      default:
+        break;
+    }
+    this.endDate = endDate;
+  }
+  next();
+});
 
 // Main Farmer Schema with Upgraded Features
 const FarmerSchema = new Schema({
@@ -305,17 +382,26 @@ const FarmerSchema = new Schema({
   address: AddressSchema,
   location: LocationSchema,
   farms: { type: [FarmDetailsSchema], required: false },
+  subscriptions: { 
+    type: [SubscriptionSchema], 
+    required: false, 
+    default: [] 
+  },
   wallet: {
     balance: { type: Number, default: 0, required: false },
     currency: { type: String, default: 'RUPEE', required: false },
   },
   financialStatus: { type: FinancialStatusSchema, required: false },
-  subscriptions: [
+  userSubscriptions: [
     {
       subscriptionId: { type: String, required: false },
+      planType: { type: String, required: false },
       details: { type: String, required: false },
       period: { type: String, required: false },
       startDate: { type: Date, default: Date.now, required: false },
+      endDate: { type: Date, required: false },
+      amountPaid: { type: String, required: false},
+      status: { type: String, enum: ['active', 'expired', 'cancelled'], default: 'active' },
     },
   ],
   availableLandForRent: { type: Boolean, default: false, required: false },
@@ -365,7 +451,7 @@ const FarmerSchema = new Schema({
   userTypes: {
     type: [String],
     enum: USER_TYPES,
-    required: [true, 'At least one user type must be specified.'],
+    required: false,
     validate: {
       validator: function(value) {
         return value.length > 0;
