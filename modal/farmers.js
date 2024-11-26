@@ -302,16 +302,21 @@ const SubscriptionSchema = new Schema({
   subscriptionId: { type: String, required: false },
   plan: { 
     type: String, 
-    enum: ['gold', 'silver'], 
+    enum: ['gold', 'silver', 'free-trial'], // Added 'free-trial'
     required: true,
     lowercase: true,
     trim: true
   },
   price: { 
     type: Number, 
-    required: true,
+    required: function() {
+      return this.plan !== 'free-trial'; // Price not required for free-trial
+    },
     validate: {
       validator: function(value) {
+        if (this.plan === 'free-trial') {
+          return value === 0; // Price must be 0 for free-trial
+        }
         // Define pricing based on plan
         const priceMap = {
           gold: 700,
@@ -322,7 +327,6 @@ const SubscriptionSchema = new Schema({
       message: props => `Price for plan '${props.value}' is invalid.`
     }
   },
-  
   discount: { 
     type: Number,
     default: 0,
@@ -331,8 +335,10 @@ const SubscriptionSchema = new Schema({
   },
   duration: { 
     type: String, 
-    enum: ['monthly', '3 months', '6 months', '1 year'], 
-    required: true 
+    enum: ['monthly', '3 months', '6 months', '1 year', '30 days'], // Added '30 days'
+    required: function() {
+      return this.plan !== 'free-trial'; // Duration not required for free-trial
+    }
   },
   startDate: { 
     type: Date, 
@@ -350,25 +356,32 @@ const SubscriptionSchema = new Schema({
   },
 }, { _id: false });
 
-// 2. Middleware to calculate endDate based on duration
+// 2. Middleware to calculate endDate based on duration and plan
 SubscriptionSchema.pre('validate', function(next) {
-  if (this.startDate && this.duration) {
+  if (this.startDate) {
     let endDate = new Date(this.startDate);
-    switch (this.duration) {
-      case 'monthly':
-        endDate.setMonth(endDate.getMonth() + 1);
-        break;
-      case '3 months':
-        endDate.setMonth(endDate.getMonth() + 3);
-        break;
-      case '6 months':
-        endDate.setMonth(endDate.getMonth() + 6);
-        break;
-      case '1 year':
-        endDate.setFullYear(endDate.getFullYear() + 1);
-        break;
-      default:
-        break;
+    if (this.plan === 'free-trial') {
+      // Fixed duration of 30 days for free-trial
+      endDate.setDate(endDate.getDate() + 30);
+      this.duration = '30 days';
+      this.price = 0; // Ensure price is 0 for free-trial
+    } else if (this.duration) {
+      switch (this.duration) {
+        case 'monthly':
+          endDate.setMonth(endDate.getMonth() + 1);
+          break;
+        case '3 months':
+          endDate.setMonth(endDate.getMonth() + 3);
+          break;
+        case '6 months':
+          endDate.setMonth(endDate.getMonth() + 6);
+          break;
+        case '1 year':
+          endDate.setFullYear(endDate.getFullYear() + 1);
+          break;
+        default:
+          break;
+      }
     }
     this.endDate = endDate;
   }
@@ -399,12 +412,12 @@ const FarmerSchema = new Schema({
     {
       subscriptionId: { type: String, required: false },
       planType: { 
-          type: String, 
-          enum: ['gold', 'silver'], 
-          required: false,
-          lowercase: true,
-          trim: true
-        },
+        type: String, 
+        enum: ['gold', 'silver', 'free-trial'],
+        required: false,
+        lowercase: true,
+        trim: true
+      },
       details: { type: String, required: false },
       period: { type: String, required: false },
       startDate: { type: Date, default: Date.now, required: false },
