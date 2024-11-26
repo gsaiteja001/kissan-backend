@@ -307,24 +307,23 @@ const SubscriptionSchema = new Schema({
     lowercase: true,
     trim: true
   },
-  price: { 
+   price: { 
     type: Number, 
     required: function() {
-      return this.plan !== 'free-trial'; // Price not required for free-trial
+      return this.planType !== 'free-trial';
     },
     validate: {
       validator: function(value) {
-        if (this.plan === 'free-trial') {
-          return value === 0; // Price must be 0 for free-trial
+        if (this.planType === 'free-trial') {
+          return value === 0;
         }
-        // Define pricing based on plan
         const priceMap = {
           gold: 700,
           silver: 350 
         };
-        return value === priceMap[this.plan];
+        return value === priceMap[this.planType];
       },
-      message: props => `Price for plan '${props.value}' is invalid.`
+      message: props => `Price for plan '${props.planType}' should be ${props.value === 0 ? 0 : `${priceMap[props.planType]}`}.`
     }
   },
   discount: { 
@@ -335,7 +334,7 @@ const SubscriptionSchema = new Schema({
   },
   duration: { 
     type: String, 
-    enum: ['monthly', '3 months', '6 months', '1 year', '30 days'], // Added '30 days'
+    enum: ['monthly', '3_month', '6_month', '1_year', '30_days'], // Added '30 days'
     required: function() {
       return this.planType !== 'free-trial'; // Duration not required for free-trial
     }
