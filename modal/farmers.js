@@ -249,10 +249,8 @@ const FarmerTypeDetailsSchema = new Schema({
   },
   fertilizerChoice: {
     type: String,
-    enum: ['Organic', 'Hybrid'], // Adjust as per your requirements
-    required: function() {
-      return this.parent().userTypes && this.parent().userTypes.includes('farmer');
-    }
+    enum: ['Organic', 'Hybrid'],
+    required: false
   }
 }, { _id: false });
 
