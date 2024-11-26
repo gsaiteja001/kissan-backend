@@ -7,4 +7,9 @@ const orderController = require('../controllers/orderController');
 // @access  Private (Assuming authentication middleware is applied)
 router.post('/', orderController.placeOrder);
 
+// @route   PUT /api/orders/status
+// @desc    Update order status
+// @access  Private/Admin (Assuming admin privileges)
+router.put('/status', orderController.updateOrderStatus);
+
 module.exports = router;
