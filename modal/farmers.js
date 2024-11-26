@@ -307,22 +307,7 @@ const SubscriptionSchema = new Schema({
   },
    price: { 
     type: Number, 
-    required: function() {
-      return this.planType !== 'free-trial';
-    },
-    validate: {
-      validator: function(value) {
-        if (this.planType === 'free-trial') {
-          return value === 0;
-        }
-        const priceMap = {
-          gold: 700,
-          silver: 350 
-        };
-        return value === priceMap[this.planType];
-      },
-      message: props => `Price for plan '${props.planType}' should be ${props.value === 0 ? 0 : `${priceMap[props.planType]}`}.`
-    }
+    required: false
   },
   discount: { 
     type: Number,
