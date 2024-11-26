@@ -62,6 +62,10 @@ const FertilizerRecommendation = require('./modal/fertilizerRecommendations');
 const translateProduct = require('./utils/translateProduct');
 
 
+// -------------------------  routes ---------------------------------------------------------------------
+
+const orderRoutes = require('../routes/orderRoutes');
+
 
 // Initialize Firebase Admin SDK
 const admin = require('firebase-admin');
