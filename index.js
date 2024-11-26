@@ -1006,7 +1006,7 @@ app.post('/api/subscriptions', async (req, res) => {
 
   // Validate period
   const validPeriods = ['1_month', '3_month', '6_month', '1_year', '30_days'];
-  if (!validPeriods.includes(period)) {
+  if (!validPeriods.includes(duration)) {
     return res.status(400).json({ message: `Invalid subscription period '${period}'. Allowed periods are: ${validPeriods.join(', ')}.` });
   }
 
