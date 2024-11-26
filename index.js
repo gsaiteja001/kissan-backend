@@ -991,21 +991,21 @@ app.post(
 
 // POST /api/subscriptions - Create a new subscription
 app.post('/api/subscriptions', async (req, res) => {
-  const { subscriptionId, planType, period, startDate, endDate, status, farmerId } = req.body;
+  const { subscriptionId, planType, duration, startDate, endDate, status, farmerId } = req.body;
 
   // Basic validation
-  if (!subscriptionId || !planType || !period || !startDate || !endDate || !status || !farmerId) {
+  if (!subscriptionId || !planType || !duration || !startDate || !endDate || !status || !farmerId) {
     return res.status(400).json({ message: 'All fields (subscriptionId, planType, period, startDate, endDate, status, farmerId) are required.' });
   }
 
   // Validate planType
-  const validPlans = ['gold', 'silver'];
+  const validPlans = ['gold', 'silver', 'free-trial'];
   if (!validPlans.includes(planType.toLowerCase())) {
     return res.status(400).json({ message: `Invalid plan type '${planType}'. Allowed types are: ${validPlans.join(', ')}.` });
   }
 
   // Validate period
-  const validPeriods = ['1_month', '3_month', '6_month', '1_year'];
+  const validPeriods = ['1_month', '3_month', '6_month', '1_year', '30_days'];
   if (!validPeriods.includes(period)) {
     return res.status(400).json({ message: `Invalid subscription period '${period}'. Allowed periods are: ${validPeriods.join(', ')}.` });
   }
