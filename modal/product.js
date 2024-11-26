@@ -185,6 +185,19 @@ const ProductSchema = new mongoose.Schema(
       min: [0, 'Review count cannot be negative'],
     },
     reviews: [ReviewSchema],
+     hazardous: { 
+      type: Boolean,
+      default: false,
+    },
+    fragile: { 
+      type: Boolean,
+      default: false,
+    },
+    itemType: { 
+      type: String,
+      enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'],
+      required: true,
+    },
   },
   { timestamps: true }
 );
