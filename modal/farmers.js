@@ -300,7 +300,7 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
 // 1. Define the SubscriptionSchema
 const SubscriptionSchema = new Schema({
   subscriptionId: { type: String, required: false },
-  plan: { 
+  planType: { 
     type: String, 
     enum: ['gold', 'silver', 'free-trial'], // Added 'free-trial'
     required: true,
@@ -354,6 +354,8 @@ const SubscriptionSchema = new Schema({
     enum: ['active', 'expired', 'cancelled'], 
     default: 'active' 
   },
+  amountPaid: { type: String, required: false },
+  details: { type: String, required: false },
 }, { _id: false });
 
 // 2. Middleware to calculate endDate based on duration and plan
@@ -398,7 +400,7 @@ const FarmerSchema = new Schema({
   address: AddressSchema,
   location: LocationSchema,
   farms: { type: [FarmDetailsSchema], required: false },
-  subscriptions: { 
+  userSubscriptions: { 
     type: [SubscriptionSchema], 
     required: false, 
     default: [] 
@@ -408,24 +410,7 @@ const FarmerSchema = new Schema({
     currency: { type: String, default: 'RUPEE', required: false },
   },
   financialStatus: { type: FinancialStatusSchema, required: false },
-  userSubscriptions: [
-    {
-      subscriptionId: { type: String, required: false },
-      planType: { 
-        type: String, 
-        enum: ['gold', 'silver', 'free-trial'],
-        required: false,
-        lowercase: true,
-        trim: true
-      },
-      details: { type: String, required: false },
-      period: { type: String, required: false },
-      startDate: { type: Date, default: Date.now, required: false },
-      endDate: { type: Date, required: false  },
-      amountPaid: { type: String, required: false },
-      status: { type: String, enum: ['active', 'expired', 'cancelled'], default: 'active' },
-    },
-  ],
+
   availableLandForRent: { type: Boolean, default: false, required: false },
   rentedLandDetails: [
     {
