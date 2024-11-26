@@ -64,7 +64,7 @@ const translateProduct = require('./utils/translateProduct');
 
 // -------------------------  routes ---------------------------------------------------------------------
 
-const orderRoutes = require('../routes/orderRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 
 
 // Initialize Firebase Admin SDK
