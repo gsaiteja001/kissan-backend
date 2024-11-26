@@ -320,7 +320,7 @@ const SubscriptionSchema = new Schema({
         // Define pricing based on plan
         const priceMap = {
           gold: 700,
-          silver: 350 // Updated from 'bronze' to 'silver'
+          silver: 350 
         };
         return value === priceMap[this.plan];
       },
