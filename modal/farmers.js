@@ -344,24 +344,28 @@ const SubscriptionSchema = new Schema({
 SubscriptionSchema.pre('validate', function(next) {
   if (this.startDate) {
     let endDate = new Date(this.startDate);
-    if (this.plan === 'free-trial') {
+    
+    if (this.planType === 'free-trial') {
       // Fixed duration of 30 days for free-trial
       endDate.setDate(endDate.getDate() + 30);
-      this.duration = '30 days';
+      this.duration = '30_days'; // Ensure consistency with enum
       this.price = 0; // Ensure price is 0 for free-trial
     } else if (this.duration) {
       switch (this.duration) {
         case 'monthly':
           endDate.setMonth(endDate.getMonth() + 1);
           break;
-        case '3 months':
+        case '3_month':
           endDate.setMonth(endDate.getMonth() + 3);
           break;
-        case '6 months':
+        case '6_month':
           endDate.setMonth(endDate.getMonth() + 6);
           break;
-        case '1 year':
+        case '1_year':
           endDate.setFullYear(endDate.getFullYear() + 1);
+          break;
+        case '30_days':
+          endDate.setDate(endDate.getDate() + 30);
           break;
         default:
           break;
