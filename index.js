@@ -750,6 +750,44 @@ const updateCropStatus = async (cropId, newStatus) => {
 // Example Usage
 // updateCropStatus('a1b2c3d4-e5f6-7g8h-9i0j-k1l2m3n4o5p6', 'Harvested');
 
+// ================================================================= functions on orders ====================================================
+
+// Example function to create an order
+async function createOrder(farmerId, orderItems, paymentDetails, shippingAddress) {
+  // Calculate distance (you might use a service like Google Maps API)
+  const distance = calculateDistance(warehouseLocation, shippingAddress.coordinates);
+
+  // Prepare shipping details
+  const shippingDetails = {
+    address: shippingAddress,
+    distance: distance,
+    estimatedDeliveryDate: calculateEstimatedDeliveryDate(distance),
+    shippingMethod: 'Standard',
+    carrier: 'Your Preferred Carrier',
+  };
+
+  // Create the order
+  const order = new Order({
+    orderId: generateUniqueOrderId(),
+    farmerId: farmerId,
+    orderItems: orderItems,
+    paymentDetails: paymentDetails,
+    shippingDetails: shippingDetails,
+    statusHistory: [{ status: 'Placed', date: new Date(), remarks: 'Order placed successfully.' }],
+  });
+
+  // Save the order
+  await order.save();
+
+  // Update the farmer's currentOrders
+  await Farmer.findByIdAndUpdate(farmerId, {
+    $push: { currentOrders: order.orderId },
+  });
+
+  return order;
+}
+
+// ---------------------------------------------------------------- API's on Orders ---------------------------------------------------------------------------
 
 
 
