@@ -38,7 +38,7 @@ const crypto = require('crypto');
 
 const farmers = require('./modal/farmers');
 const Product = require('./modal/product');
-const Order = require('./model/orders');
+const Order = require('./model/order');
 const Crop = require('./modal/crop');
 
 const CropTemplate = require('./modal/croptemplate');
