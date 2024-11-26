@@ -246,6 +246,13 @@ const FarmerTypeDetailsSchema = new Schema({
     required: function() {
       return this.parent().userTypes && this.parent().userTypes.includes('farmer');
     }
+  },
+  fertilizerChoice: {
+    type: String,
+    enum: ['Organic', 'Hybrid'], // Adjust as per your requirements
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('farmer');
+    }
   }
 }, { _id: false });
 
