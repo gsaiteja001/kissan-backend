@@ -462,6 +462,11 @@ const FarmerSchema = new Schema({
   farmerDetails: FarmerTypeDetailsSchema,
   gardenerDetails: GardenerTypeDetailsSchema,
   animalHusbandryDetails: AnimalHusbandryTypeDetailsSchema,
+
+  currentOrders: [{ type: String, ref: 'Order', required: false }], // Orders that are not yet delivered or completed
+  completedOrders: [{ type: String, ref: 'Order', required: false }], // Orders that are delivered
+  returnedOrders: [{ type: String, ref: 'Order', required: false }],
+  
   createdAt: { type: Date, default: Date.now, required: false },
 });
 
@@ -470,11 +475,7 @@ FarmerSchema.virtual('fullAddress').get(function () {
   return `${this.address.street}, ${this.address.city}, ${this.address.state}, ${this.address.country}`;
 });
 
-FarmerSchema.add({
-  currentOrders: [{ type: String, ref: 'Order', required: false }], // Orders that are not yet delivered or completed
-  completedOrders: [{ type: String, ref: 'Order', required: false }], // Orders that are delivered
-  returnedOrders: [{ type: String, ref: 'Order', required: false }], // Orders that are returned
-});
+
 
 // Export the Farmer model
 module.exports = mongoose.model('Farmer', FarmerSchema);
