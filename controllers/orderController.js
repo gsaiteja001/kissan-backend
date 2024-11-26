@@ -89,3 +89,79 @@ exports.placeOrder = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+// Controller to update order status
+exports.updateOrderStatus = async (req, res) => {
+  const { orderId, status, remarks } = req.body;
+
+  // Validate status
+  const validStatuses = ['Placed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ message: 'Invalid status value' });
+  }
+
+  try {
+    const order = await Order.findOne({ orderId });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Update order status and add to statusHistory
+    order.orderStatus = status;
+    order.statusHistory.push({
+      status,
+      date: new Date(),
+      remarks: remarks || '',
+    });
+
+    // Update relevant date fields based on status
+    switch (status) {
+      case 'Shipped':
+        order.shippedDate = new Date();
+        break;
+      case 'Delivered':
+        order.deliveredDate = new Date();
+        // Move order from currentOrders to completedOrders
+        await Farmer.updateOne(
+          { farmerId: order.farmerId },
+          {
+            $pull: { currentOrders: order.orderId },
+            $push: { completedOrders: order.orderId },
+          }
+        );
+        break;
+      case 'Cancelled':
+        order.cancelledDate = new Date();
+        order.reasonForCancellation = remarks || '';
+        // Remove from currentOrders
+        await Farmer.updateOne(
+          { farmerId: order.farmerId },
+          { $pull: { currentOrders: order.orderId } }
+        );
+        break;
+      case 'Returned':
+        order.returnedDate = new Date();
+        order.reasonForReturn = remarks || '';
+        // Remove from currentOrders or completedOrders and add to returnedOrders
+        await Farmer.updateOne(
+          { farmerId: order.farmerId },
+          {
+            $pull: { currentOrders: order.orderId, completedOrders: order.orderId },
+            $push: { returnedOrders: order.orderId },
+          }
+        );
+        break;
+      default:
+        break;
+    }
+
+    await order.save();
+
+    return res.status(200).json({ message: 'Order status updated successfully', order });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
