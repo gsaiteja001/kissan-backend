@@ -1068,20 +1068,27 @@ app.post('/api/subscriptions', async (req, res) => {
 app.put('/userType/farmers/:id', async (req, res) => {
   const farmerId = req.params.id;
   const updateData = req.body;
+
   try {
-    const updatedFarmer = await farmers.findOneAndUpdate(
-      { farmerId: farmerId },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-    if (!updatedFarmer) {
+    // Step 1: Find the farmer document by farmerId
+    const farmer = await farmers.findOne({ farmerId: farmerId });
+    if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
     }
+
+    // Step 2: Update the farmer document with the provided data
+    // Use Object.assign to merge updateData into farmer
+    Object.assign(farmer, updateData);
+
+    // Step 3: Save the updated farmer document with validators
+    const updatedFarmer = await farmer.save();
+
+    // Respond with the updated farmer data
     res.status(200).json(updatedFarmer);
   } catch (error) {
     console.error('Error updating farmer:', error);
     if (error.name === 'ValidationError') {
-      // Extract validation errors
+      // Extract validation error messages
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ message: 'Validation Error', errors });
     }
