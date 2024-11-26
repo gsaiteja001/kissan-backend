@@ -1065,6 +1065,53 @@ app.post('/api/subscriptions', async (req, res) => {
 });
 
 
+app.post('/subscribe-free-trial', async (req, res) => {
+  const { farmerId } = req.body;
+
+  try {
+    const farmer = await farmers.findOne({ farmerId });
+
+    if (!farmer) {
+      return res.status(404).json({ error: 'Farmer not found' });
+    }
+
+    const currentDate = new Date();
+    const existingFreeTrial = farmer.userSubscriptions.find(
+      (sub) =>
+        sub.planType === 'free-trial' &&
+        sub.status === 'active' &&
+        new Date(sub.endDate) > currentDate
+    );
+
+    if (existingFreeTrial) {
+      return res
+        .status(400)
+        .json({ error: 'Free trial already active for this farmer' });
+    }
+
+    const newSubscription = {
+      subscriptionId: 'sub_' + new Date().getTime(),
+      planType: 'free-trial',
+      price: 0,
+      discount: 0,
+      duration: '30 days',
+      startDate: new Date(),
+      endDate: undefined, // Will be set by the pre('validate') hook
+      status: 'active',
+    };
+
+    farmer.userSubscriptions.push(newSubscription);
+
+    await farmer.save();
+
+    res.json(farmer);
+  } catch (error) {
+    console.error('Error activating free trial:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 app.put('/userType/farmers/:id', async (req, res) => {
   const farmerId = req.params.id;
   const updateData = req.body;
