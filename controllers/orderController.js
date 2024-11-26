@@ -1,6 +1,6 @@
-const Order = require('../model/order');
-const Farmer = require('../model/farmers');
-const Product = require('../model/product');
+const Order = require('../modal/order');
+const Farmer = require('../modal/farmers');
+const Product = require('../modal/product');
 const mongoose = require('mongoose');
 
 // Helper function to generate unique order ID
