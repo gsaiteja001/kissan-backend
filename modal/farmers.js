@@ -337,7 +337,7 @@ const SubscriptionSchema = new Schema({
     type: String, 
     enum: ['monthly', '3 months', '6 months', '1 year', '30 days'], // Added '30 days'
     required: function() {
-      return this.plan !== 'free-trial'; // Duration not required for free-trial
+      return this.planType !== 'free-trial'; // Duration not required for free-trial
     }
   },
   startDate: { 
