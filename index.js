@@ -1044,7 +1044,7 @@ app.post('/api/subscriptions', async (req, res) => {
     const newSubscription = {
       subscriptionId,
       planType,
-      period,
+      duration,
       startDate: start,
       endDate: end,
       status,
