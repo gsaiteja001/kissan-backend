@@ -10,6 +10,7 @@ const generateUniqueOrderId = () => {
 
 
 // Controller to get orders with product details
+// Controller to get orders with product details using aggregation
 exports.getOrdersWithProductDetails = async (req, res) => {
   const farmerId = req.params.farmerId; // Assuming farmerId is passed as a URL parameter
 
@@ -24,13 +25,57 @@ exports.getOrdersWithProductDetails = async (req, res) => {
     // Get all orderIds from currentOrders and completedOrders
     const orderIds = [...farmer.currentOrders, ...farmer.completedOrders];
 
-    // Fetch orders and populate product details
-    const orders = await Order.find({ orderId: { $in: orderIds } })
-      .populate({
-        path: 'orderItems.productId',
-        model: 'Product',
-      })
-      .lean();
+    // Aggregation pipeline
+    const orders = await Order.aggregate([
+      { $match: { orderId: { $in: orderIds } } },
+      { $unwind: '$orderItems' },
+      {
+        $lookup: {
+          from: 'products', // Collection name in MongoDB is usually the lowercase plural ('products')
+          localField: 'orderItems.productId',
+          foreignField: 'productId',
+          as: 'orderItems.productDetails',
+        },
+      },
+      { $unwind: { path: '$orderItems.productDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: '$_id',
+          orderId: { $first: '$orderId' },
+          farmerId: { $first: '$farmerId' },
+          orderStatus: { $first: '$orderStatus' },
+          statusHistory: { $first: '$statusHistory' },
+          paymentDetails: { $first: '$paymentDetails' },
+          shippingDetails: { $first: '$shippingDetails' },
+          orderDate: { $first: '$orderDate' },
+          shippedDate: { $first: '$shippedDate' },
+          deliveredDate: { $first: '$deliveredDate' },
+          cancelledDate: { $first: '$cancelledDate' },
+          returnedDate: { $first: '$returnedDate' },
+          reasonForCancellation: { $first: '$reasonForCancellation' },
+          reasonForReturn: { $first: '$reasonForReturn' },
+          customerRemarks: { $first: '$customerRemarks' },
+          adminRemarks: { $first: '$adminRemarks' },
+          orderItems: {
+            $push: {
+              productId: '$orderItems.productId',
+              productName: '$orderItems.productName',
+              sizeOption: '$orderItems.sizeOption',
+              quantity: '$orderItems.quantity',
+              weight: '$orderItems.weight',
+              totalItemWeight: '$orderItems.totalItemWeight',
+              hazardous: '$orderItems.hazardous',
+              fragile: '$orderItems.fragile',
+              itemType: '$orderItems.itemType',
+              productDetails: '$orderItems.productDetails',
+            },
+          },
+          totalQuantity: { $first: '$totalQuantity' },
+          totalWeight: { $first: '$totalWeight' },
+          totalPrice: { $first: '$totalPrice' },
+        },
+      },
+    ]);
 
     return res.status(200).json({ orders });
   } catch (error) {
@@ -38,7 +83,6 @@ exports.getOrdersWithProductDetails = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
-
 
 // Controller to place an order
 exports.placeOrder = async (req, res) => {
