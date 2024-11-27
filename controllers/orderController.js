@@ -11,7 +11,7 @@ const generateUniqueOrderId = () => {
 
 // Controller to get orders with product details
 exports.getOrdersWithProductDetails = async (req, res) => {
-  const farmerId = req.params.farmerId; // Assuming farmerId is passed as a URL parameter
+  const farmerId = req.params.farmerId; 
 
   try {
     // Find the farmer
@@ -25,7 +25,7 @@ exports.getOrdersWithProductDetails = async (req, res) => {
     const orderIds = [...(farmer.currentOrders || []), ...(farmer.completedOrders || [])];
 
     if (orderIds.length === 0) {
-      return res.status(200).json({ orders: [] }); // No orders to retrieve
+      return res.status(200).json({ orders: [] }); 
     }
 
     // Aggregation pipeline
@@ -49,7 +49,7 @@ exports.getOrdersWithProductDetails = async (req, res) => {
       {
         $unwind: {
           path: '$orderItems.productDetails',
-          preserveNullAndEmptyArrays: true, // Keeps orders even if product details are missing
+          preserveNullAndEmptyArrays: true, 
         },
       },
       {
