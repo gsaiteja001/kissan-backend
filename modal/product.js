@@ -196,7 +196,7 @@ const ProductSchema = new mongoose.Schema(
     itemType: { 
       type: String,
       enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'],
-      required: true,
+      required: false,
     },
   },
   { timestamps: true }
