@@ -8,6 +8,38 @@ const generateUniqueOrderId = () => {
   return `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 };
 
+
+// Controller to get orders with product details
+exports.getOrdersWithProductDetails = async (req, res) => {
+  const farmerId = req.params.farmerId; // Assuming farmerId is passed as a URL parameter
+
+  try {
+    // Find the farmer
+    const farmer = await Farmer.findOne({ farmerId });
+
+    if (!farmer) {
+      return res.status(404).json({ message: 'Farmer not found' });
+    }
+
+    // Get all orderIds from currentOrders and completedOrders
+    const orderIds = [...farmer.currentOrders, ...farmer.completedOrders];
+
+    // Fetch orders and populate product details
+    const orders = await Order.find({ orderId: { $in: orderIds } })
+      .populate({
+        path: 'orderItems.productId',
+        model: 'Product',
+      })
+      .lean();
+
+    return res.status(200).json({ orders });
+  } catch (error) {
+    console.error('Error retrieving orders:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
 // Controller to place an order
 exports.placeOrder = async (req, res) => {
   const session = await mongoose.startSession();
