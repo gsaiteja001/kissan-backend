@@ -10,7 +10,6 @@ const generateUniqueOrderId = () => {
 
 
 // Controller to get orders with product details
-// Controller to get orders with product details using aggregation
 exports.getOrdersWithProductDetails = async (req, res) => {
   const farmerId = req.params.farmerId; // Assuming farmerId is passed as a URL parameter
 
@@ -23,21 +22,36 @@ exports.getOrdersWithProductDetails = async (req, res) => {
     }
 
     // Get all orderIds from currentOrders and completedOrders
-    const orderIds = [...farmer.currentOrders, ...farmer.completedOrders];
+    const orderIds = [...(farmer.currentOrders || []), ...(farmer.completedOrders || [])];
+
+    if (orderIds.length === 0) {
+      return res.status(200).json({ orders: [] }); // No orders to retrieve
+    }
 
     // Aggregation pipeline
     const orders = await Order.aggregate([
-      { $match: { orderId: { $in: orderIds } } },
-      { $unwind: '$orderItems' },
+      {
+        $match: {
+          orderId: { $in: orderIds },
+        },
+      },
+      {
+        $unwind: '$orderItems',
+      },
       {
         $lookup: {
-          from: 'products', // Collection name in MongoDB is usually the lowercase plural ('products')
+          from: 'products', // MongoDB collection name (usually lowercase plural)
           localField: 'orderItems.productId',
           foreignField: 'productId',
           as: 'orderItems.productDetails',
         },
       },
-      { $unwind: { path: '$orderItems.productDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $unwind: {
+          path: '$orderItems.productDetails',
+          preserveNullAndEmptyArrays: true, // Keeps orders even if product details are missing
+        },
+      },
       {
         $group: {
           _id: '$_id',
@@ -67,7 +81,13 @@ exports.getOrdersWithProductDetails = async (req, res) => {
               hazardous: '$orderItems.hazardous',
               fragile: '$orderItems.fragile',
               itemType: '$orderItems.itemType',
-              productDetails: '$orderItems.productDetails',
+              productDetails: {
+                name: '$orderItems.productDetails.name',
+                price: '$orderItems.productDetails.price',
+                category: '$orderItems.productDetails.category',
+                images: '$orderItems.productDetails.images', // Including images array
+                // Include other desired fields from Product as needed
+              },
             },
           },
           totalQuantity: { $first: '$totalQuantity' },
@@ -76,6 +96,13 @@ exports.getOrdersWithProductDetails = async (req, res) => {
         },
       },
     ]);
+
+    return res.status(200).json({ orders });
+  } catch (error) {
+    console.error('Error retrieving orders:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
     return res.status(200).json({ orders });
   } catch (error) {
