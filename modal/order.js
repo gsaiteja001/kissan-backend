@@ -16,15 +16,15 @@ const OrderItemSchema = new Schema({
   productId: { type: String, required: true, ref: 'Product' },
   productName: { type: String, required: true },
   sizeOption: {
-    size: { type: String, required: true },
-    price: { type: Number, required: true },
+    size: { type: String, required: false },
+    price: { type: Number, required: false },
   },
   quantity: { type: Number, required: true, default: 1 },
-  weight: { type: Number, required: true }, // Weight per item
-  totalItemWeight: { type: Number, required: true }, // weight * quantity
-  hazardous: { type: Boolean, required: true, default: false }, // Indicates if the item is hazardous
-  fragile: { type: Boolean, required: true, default: false }, // Indicates if the item is fragile
-  itemType: { type: String, required: true }, // e.g., 'Chemical', 'Fertilizer', 'Tool', etc.
+  weight: { type: Number, required: false }, // Weight per item
+  totalItemWeight: { type: Number, required: false }, // weight * quantity
+  hazardous: { type: Boolean, required: false, default: false }, // Indicates if the item is hazardous
+  fragile: { type: Boolean, required: false, default: false }, // Indicates if the item is fragile
+  itemType: { type: String, required: false }, // e.g., 'Chemical', 'Fertilizer', 'Tool', etc.
 });
 
 // Subschema for Payment Details
@@ -32,22 +32,22 @@ const PaymentDetailsSchema = new Schema({
   paymentMethod: {
     type: String,
     enum: ['Credit Card', 'Debit Card', 'Net Banking', 'UPI', 'Cash on Delivery'],
-    required: true,
+    required: false,
   },
   paymentStatus: {
     type: String,
     enum: ['Pending', 'Completed', 'Failed', 'Refunded'],
     default: 'Pending',
-    required: true,
+    required: false,
   },
   transactionId: { type: String, required: false },
-  amountPaid: { type: Number, required: true },
+  amountPaid: { type: Number, required: false },
 });
 
 // Subschema for Shipping Details
 const ShippingDetailsSchema = new Schema({
   address: AddressSchema,
-  distance: { type: Number, required: true }, // Distance in kilometers
+  distance: { type: Number, required: false }, // Distance in kilometers
   estimatedDeliveryDate: { type: Date, required: false },
   shippingMethod: {
     type: String,
@@ -56,7 +56,7 @@ const ShippingDetailsSchema = new Schema({
     required: true,
   },
   trackingNumber: { type: String, required: false },
-  carrier: { type: String, required: false }, // e.g., 'DHL', 'FedEx', etc.
+  carrier: { type: String, required: false }, 
 });
 
 // Subschema for Order Status History
@@ -64,31 +64,31 @@ const OrderStatusHistorySchema = new Schema({
   status: {
     type: String,
     enum: ['Placed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'],
-    required: true,
+    required: false,
   },
-  date: { type: Date, default: Date.now, required: true },
+  date: { type: Date, default: Date.now, required: false },
   remarks: { type: String, required: false },
 });
 
 // Main Order Schema
 const OrderSchema = new Schema(
   {
-    orderId: { type: String, required: true, unique: true, trim: true },
-    farmerId: { type: String, required: true, ref: 'Farmer' },
-    orderItems: { type: [OrderItemSchema], required: true },
-    totalQuantity: { type: Number, required: true },
-    totalWeight: { type: Number, required: true }, // Sum of all item weights
-    totalPrice: { type: Number, required: true },
+    orderId: { type: String, required: false, unique: true, trim: true },
+    farmerId: { type: String, required: false, ref: 'Farmer' },
+    orderItems: { type: [OrderItemSchema], required: false },
+    totalQuantity: { type: Number, required: false },
+    totalWeight: { type: Number, required: false }, // Sum of all item weights
+    totalPrice: { type: Number, required: false },
     orderStatus: {
       type: String,
       enum: ['Placed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'],
       default: 'Placed',
-      required: true,
+      required: false,
     },
-    statusHistory: { type: [OrderStatusHistorySchema], required: true, default: [] },
-    paymentDetails: { type: PaymentDetailsSchema, required: true },
-    shippingDetails: { type: ShippingDetailsSchema, required: true },
-    orderDate: { type: Date, default: Date.now, required: true },
+    statusHistory: { type: [OrderStatusHistorySchema], required: false, default: [] },
+    paymentDetails: { type: PaymentDetailsSchema, required: false },
+    shippingDetails: { type: ShippingDetailsSchema, required: false },
+    orderDate: { type: Date, default: Date.now, required: false },
     shippedDate: { type: Date, required: false },
     deliveredDate: { type: Date, required: false },
     cancelledDate: { type: Date, required: false },
