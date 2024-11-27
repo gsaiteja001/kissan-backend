@@ -12,4 +12,6 @@ router.post('/', orderController.placeOrder);
 // @access  Private/Admin (Assuming admin privileges)
 router.put('/status', orderController.updateOrderStatus);
 
+router.get('/orders/:farmerId', orderController.getOrdersWithProductDetails);
+
 module.exports = router;
