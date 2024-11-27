@@ -104,12 +104,6 @@ exports.getOrdersWithProductDetails = async (req, res) => {
   }
 };
 
-    return res.status(200).json({ orders });
-  } catch (error) {
-    console.error('Error retrieving orders:', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
 
 // Controller to place an order
 exports.placeOrder = async (req, res) => {
