@@ -376,6 +376,33 @@ SubscriptionSchema.pre('validate', function(next) {
   next();
 });
 
+// Subschema for Current Service Requests
+const CurrentServiceRequestSchema = new Schema({
+  requestID: { type: String, required: true },
+  serviceID: { type: String, required: true },
+  serviceProviderID: { type: String, required: true },
+  status: { 
+    type: String, 
+    enum: ['Pending', 'InProgress', 'Assigned'], // Define appropriate statuses
+    required: true 
+  },
+  scheduledDate: { type: Date, required: true },
+}, { _id: false });
+
+
+// Subschema for Completed Service Requests
+const CompletedServiceRequestSchema = new Schema({
+  requestID: { type: String, required: true },
+  serviceID: { type: String, required: true },
+  serviceProviderID: { type: String, required: true },
+  status: { 
+    type: String, 
+    enum: ['Completed', 'Cancelled'], 
+    required: true 
+  },
+  scheduledDate: { type: Date, required: true },
+}, { _id: false });
+
 // Main Farmer Schema with Upgraded Features
 const FarmerSchema = new Schema({
   farmerId: { type: String, required: true, unique: true, trim: true },
@@ -428,6 +455,18 @@ const FarmerSchema = new Schema({
   notificationPreferences: { type: NotificationPreferencesSchema, required: false },
   currentCrops: { type: [CropDetailsSchema], required: false },
   completedCrops: { type: [CropDetailsSchema], required: false },
+
+  currentServiceRequests: { 
+    type: [CurrentServiceRequestSchema], 
+    required: false,
+    default: [] 
+  },
+  completedServiceRequests: { 
+    type: [CompletedServiceRequestSchema], 
+    required: false,
+    default: [] 
+  },
+  
   accountStatus: {
     type: String,
     enum: ['Active', 'Suspended', 'Deactivated'],
