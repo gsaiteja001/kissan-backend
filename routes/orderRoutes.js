@@ -14,4 +14,6 @@ router.put('/status', orderController.updateOrderStatus);
 
 router.get('/farmer/:farmerId', orderController.getOrdersWithProductDetails);
 
+router.get('/allOrders', orderController.getAllOrders);
+
 module.exports = router;
