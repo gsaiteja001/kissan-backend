@@ -105,6 +105,86 @@ exports.getOrdersWithProductDetails = async (req, res) => {
 };
 
 
+
+// Controller to get all orders with product details
+exports.getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.aggregate([
+      {
+        $unwind: '$orderItems',
+      },
+      {
+        $lookup: {
+          from: 'products', // Ensure this matches your Product collection name
+          localField: 'orderItems.productId',
+          foreignField: 'productId',
+          as: 'orderItems.productDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$orderItems.productDetails',
+          preserveNullAndEmptyArrays: true, 
+        },
+      },
+      {
+        $group: {
+          _id: '$_id',
+          orderId: { $first: '$orderId' },
+          farmerId: { $first: '$farmerId' },
+          orderStatus: { $first: '$orderStatus' },
+          statusHistory: { $first: '$statusHistory' },
+          paymentDetails: { $first: '$paymentDetails' },
+          shippingDetails: { $first: '$shippingDetails' },
+          orderDate: { $first: '$orderDate' },
+          shippedDate: { $first: '$shippedDate' },
+          deliveredDate: { $first: '$deliveredDate' },
+          cancelledDate: { $first: '$cancelledDate' },
+          returnedDate: { $first: '$returnedDate' },
+          reasonForCancellation: { $first: '$reasonForCancellation' },
+          reasonForReturn: { $first: '$reasonForReturn' },
+          customerRemarks: { $first: '$customerRemarks' },
+          adminRemarks: { $first: '$adminRemarks' },
+          orderItems: {
+            $push: {
+              productId: '$orderItems.productId',
+              productName: '$orderItems.productName',
+              sizeOption: '$orderItems.sizeOption',
+              quantity: '$orderItems.quantity',
+              weight: '$orderItems.weight',
+              totalItemWeight: '$orderItems.totalItemWeight',
+              hazardous: '$orderItems.hazardous',
+              fragile: '$orderItems.fragile',
+              itemType: '$orderItems.itemType',
+              productDetails: {
+                name: '$orderItems.productDetails.name',
+                price: '$orderItems.productDetails.price',
+                category: '$orderItems.productDetails.category',
+                images: '$orderItems.productDetails.images',
+                // Include other desired fields from Product as needed
+              },
+            },
+          },
+          totalQuantity: { $first: '$totalQuantity' },
+          totalWeight: { $first: '$totalWeight' },
+          totalPrice: { $first: '$totalPrice' },
+        },
+      },
+      {
+        $sort: { orderDate: -1 }, // Optional: Sort orders by most recent
+      },
+    ]);
+
+    return res.status(200).json({ orders });
+  } catch (error) {
+    console.error('Error retrieving all orders:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+
+
 // Controller to place an order
 exports.placeOrder = async (req, res) => {
   const session = await mongoose.startSession();
