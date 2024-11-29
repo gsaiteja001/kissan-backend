@@ -71,7 +71,6 @@ const warehouseSchema = new mongoose.Schema(
   {
     warehouseId: {
       type: String,
-      default: uuidv4, // Automatically generate UUIDv4
       unique: true, // Ensure uniqueness
       immutable: true, // Prevent modification once set
     },
