@@ -17,6 +17,7 @@ const Order = require('../modal/order');
 exports.createWarehouse = async (req, res, next) => {
   try {
     const {
+      warehouseId,
       warehouseName,
       address,
       contactInfo,
@@ -26,6 +27,7 @@ exports.createWarehouse = async (req, res, next) => {
     } = req.body;
 
     const newWarehouse = new Warehouse({
+      warehouseId,
       warehouseName,
       address,
       contactInfo,
