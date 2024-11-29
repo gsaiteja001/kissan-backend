@@ -121,7 +121,17 @@ const warehouseSchema = new mongoose.Schema(
       otherSystems: [{ type: String }],
     },
 
-    // Add virtual field for inventory items
+  
+    reportingAndAnalytics: {
+      lastInventoryAudit: { type: Date },
+      reportsGenerated: [{ type: String }], // e.g., "Monthly Stock Report"
+    },
+    archived: { type: Boolean, default: false }, // Soft delete mechanism
+  },
+  { timestamps: true }
+);
+
+ // Add virtual field for inventory items
     warehouseSchema.virtual('inventoryItems', {
       ref: 'InventoryItem',
       localField: '_id',
@@ -131,14 +141,5 @@ const warehouseSchema = new mongoose.Schema(
     // Ensure virtual fields are included when converting to JSON or Object
     warehouseSchema.set('toObject', { virtuals: true });
     warehouseSchema.set('toJSON', { virtuals: true });
-
-    reportingAndAnalytics: {
-      lastInventoryAudit: { type: Date },
-      reportsGenerated: [{ type: String }], // e.g., "Monthly Stock Report"
-    },
-    archived: { type: Boolean, default: false }, // Soft delete mechanism
-  },
-  { timestamps: true }
-);
 
 module.exports = mongoose.model('Warehouse', warehouseSchema);
