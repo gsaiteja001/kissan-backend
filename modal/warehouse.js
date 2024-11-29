@@ -75,7 +75,7 @@ const warehouseSchema = new mongoose.Schema(
       unique: true, 
       immutable: true,
     },
-    warehouseName: { type: String, required: false, unique: true },
+    warehouseName: { type: String, required: true, unique: true },
     address: { type: addressSchema, required: false },
     contactInfo: {
       phone: { type: String, required: false },
