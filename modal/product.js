@@ -213,6 +213,18 @@ const ProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+
+// Middleware to update total stock quantity in Product
+ProductSchema.methods.updateTotalStock = async function () {
+  const totalStock = await InventoryItem.aggregate([
+    { $match: { product: this._id } },
+    { $group: { _id: null, totalStock: { $sum: '$stockQuantity' } } },
+  ]);
+
+  this.stockQuantity = totalStock.length > 0 ? totalStock[0].totalStock : 0;
+  await this.save();
+};
+
 // Pre-save middleware to calculate finalPrice
 ProductSchema.pre('save', function (next) {
   const now = new Date();
