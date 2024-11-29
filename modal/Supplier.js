@@ -5,7 +5,7 @@ const supplierSchema = new mongoose.Schema({
   contactInfo: {
     phone: { type: String },
     email: { type: String },
-    address: { type: addressSchema },
+    address: { type: String },
   },
   productsSupplied: [{ type: String }], // List of product SKUs
   // ... other fields
