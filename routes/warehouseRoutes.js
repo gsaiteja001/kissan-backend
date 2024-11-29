@@ -15,7 +15,7 @@ const {
 const router = express.Router();
 
 // Create a new warehouse
-router.post('/', createWarehouse);
+router.post('/create', createWarehouse);
 
 // Get all warehouses
 router.get('/', getAllWarehouses);
