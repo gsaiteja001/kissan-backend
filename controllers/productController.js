@@ -269,3 +269,59 @@ exports.getProductInventory = async (req, res, next) => {
     next(error);
   }
 };
+
+
+/**
+ * @desc    Get top-selling products across all warehouses
+ * @route   GET /api/products/top-selling
+ * @access  Public (Adjust access as needed)
+ */
+exports.getTopSellingProducts = async (req, res, next) => {
+  try {
+    const { top = 5 } = req.query;
+
+    const salesData = await Sale.aggregate([
+      {
+        $group: {
+          _id: {
+            product: '$product',
+          },
+          totalQuantitySold: { $sum: '$quantitySold' },
+        },
+      },
+      {
+        $sort: { totalQuantitySold: -1 },
+      },
+      {
+        $limit: parseInt(top),
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: '_id.product',
+          foreignField: '_id',
+          as: 'product',
+        },
+      },
+      {
+        $unwind: '$product',
+      },
+      {
+        $project: {
+          productId: '$product.productId',
+          name: '$product.name.en',
+          category: '$product.category',
+          totalQuantitySold: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: salesData.length,
+      data: salesData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
