@@ -5,6 +5,10 @@ const Warehouse = require('../modal/warehouse');
 const InventoryItem = require('../modal/InventoryItem');
 const Product = require('../modal/product');
 
+const Supplier = require('../modal/Supplier'); 
+const Farmer = require('../modal/farmers');    
+const Order = require('../modal/order'); 
+
 /**
  * @desc    Create a new warehouse
  * @route   POST /api/warehouses
