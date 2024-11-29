@@ -120,6 +120,18 @@ const warehouseSchema = new mongoose.Schema(
       crmSystem: { type: String }, // e.g., "Salesforce"
       otherSystems: [{ type: String }],
     },
+
+    // Add virtual field for inventory items
+    warehouseSchema.virtual('inventoryItems', {
+      ref: 'InventoryItem',
+      localField: '_id',
+      foreignField: 'warehouse',
+    });
+    
+    // Ensure virtual fields are included when converting to JSON or Object
+    warehouseSchema.set('toObject', { virtuals: true });
+    warehouseSchema.set('toJSON', { virtuals: true });
+
     reportingAndAnalytics: {
       lastInventoryAudit: { type: Date },
       reportsGenerated: [{ type: String }], // e.g., "Monthly Stock Report"
