@@ -18,7 +18,7 @@ const router = express.Router();
 router.post('/create', createWarehouse);
 
 // Get all warehouses
-router.get('/', getAllWarehouses);
+router.get('/all-warehouses', getAllWarehouses);
 
 // Get a single warehouse by ID
 router.get('/:id', getWarehouseById);
