@@ -1,10 +1,10 @@
 // services/salesService.js
 
 const mongoose = require('mongoose');
-const Sale = require('../models/Sale');
-const InventoryItem = require('../models/InventoryItem');
-const Product = require('../models/Product');
-const Warehouse = require('../models/Warehouse');
+const Sale = require('../modal/Sale');
+const InventoryItem = require('../modal/InventoryItem');
+const Product = require('../modal/product');
+const Warehouse = require('../modal/warehouse');
 
 async function getSalesReport() {
   const salesData = await Sale.aggregate([
