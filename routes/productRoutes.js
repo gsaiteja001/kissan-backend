@@ -33,4 +33,8 @@ router.post('/:id/reviews', addReview);
 // Get inventory details for a product across all warehouses
 router.get('/:id/inventory', getProductInventory);
 
+// Get top-selling products
+router.get('/top-selling', getTopSellingProducts);
+
+
 module.exports = router;
