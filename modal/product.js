@@ -198,6 +198,17 @@ const ProductSchema = new mongoose.Schema(
       enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'],
       required: false,
     },
+
+    // Add virtual field for inventory items
+    ProductSchema.virtual('inventoryItems', {
+      ref: 'InventoryItem',
+      localField: '_id',
+      foreignField: 'product',
+    });
+    
+    ProductSchema.set('toObject', { virtuals: true });
+    ProductSchema.set('toJSON', { virtuals: true });
+
   },
   { timestamps: true }
 );
