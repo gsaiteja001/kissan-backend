@@ -67,7 +67,9 @@ const translateProduct = require('./utils/translateProduct');
 const orderRoutes = require('./routes/orderRoutes');
 app.use('/orders', orderRoutes); 
 
+const warehouseRoutes = require('./routes/warehouseRoutes');
 
+app.use('/api/warehouses', warehouseRoutes);
 
 
 
