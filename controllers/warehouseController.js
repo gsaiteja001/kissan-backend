@@ -55,7 +55,13 @@ exports.getAllWarehouses = async (req, res, next) => {
       .populate('linkedSuppliers', 'name contactInfo')
       .populate('linkedCustomers', 'name contactInfo')
       .populate('linkedOrders', 'orderNumber status totalAmount')
-      .populate('inventoryItems.product', 'name category price');
+      .populate({
+        path: 'inventoryItems',
+        populate: {
+          path: 'product',
+          select: 'name category price',
+        },
+      });
 
     res.status(200).json({
       success: true,
