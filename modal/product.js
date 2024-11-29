@@ -198,8 +198,12 @@ const ProductSchema = new mongoose.Schema(
       enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'],
       required: false,
     },
+  },
+  { timestamps: true }
+);
 
-    // Add virtual field for inventory items
+
+// Add virtual field for inventory items
     ProductSchema.virtual('inventoryItems', {
       ref: 'InventoryItem',
       localField: '_id',
@@ -208,10 +212,6 @@ const ProductSchema = new mongoose.Schema(
     
     ProductSchema.set('toObject', { virtuals: true });
     ProductSchema.set('toJSON', { virtuals: true });
-
-  },
-  { timestamps: true }
-);
 
 
 // Middleware to update total stock quantity in Product
