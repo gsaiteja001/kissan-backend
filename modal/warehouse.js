@@ -1,5 +1,6 @@
 // models/Warehouse.js
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid'); 
 
 // Address Schema
 const addressSchema = new mongoose.Schema({
@@ -68,6 +69,12 @@ const inventoryItemSchema = new mongoose.Schema({
 // Warehouse Schema
 const warehouseSchema = new mongoose.Schema(
   {
+    warehouseId: {
+      type: String,
+      default: uuidv4, // Automatically generate UUIDv4
+      unique: true, // Ensure uniqueness
+      immutable: true, // Prevent modification once set
+    },
     warehouseName: { type: String, required: false, unique: true },
     address: { type: addressSchema, required: false },
     contactInfo: {
