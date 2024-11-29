@@ -2,8 +2,8 @@
 
 const mongoose = require('mongoose');
 const Warehouse = require('../modal/warehouse');
-const InventoryItem = require('../models/InventoryItem');
-const Product = require('../models/Product');
+const InventoryItem = require('../modal/InventoryItem');
+const Product = require('../modal/product');
 
 /**
  * @desc    Create a new warehouse
