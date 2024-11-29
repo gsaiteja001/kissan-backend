@@ -82,7 +82,7 @@ const warehouseSchema = new mongoose.Schema(
       enum: ['FIFO', 'LIFO', 'FEFO'], // FEFO: First Expire, First Out
       default: 'FIFO',
     },
-    inventoryItems: [inventoryItemSchema],
+    // Removed the embedded inventoryItems field
     staff: [staffSchema],
     securityMeasures: {
       cctv: { type: Boolean, default: true },
@@ -121,7 +121,6 @@ const warehouseSchema = new mongoose.Schema(
       otherSystems: [{ type: String }],
     },
 
-  
     reportingAndAnalytics: {
       lastInventoryAudit: { type: Date },
       reportsGenerated: [{ type: String }], // e.g., "Monthly Stock Report"
@@ -131,15 +130,15 @@ const warehouseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
- // Add virtual field for inventory items
-    warehouseSchema.virtual('inventoryItems', {
-      ref: 'InventoryItem',
-      localField: '_id',
-      foreignField: 'warehouse',
-    });
-    
-    // Ensure virtual fields are included when converting to JSON or Object
-    warehouseSchema.set('toObject', { virtuals: true });
-    warehouseSchema.set('toJSON', { virtuals: true });
+// Add virtual field for inventory items
+warehouseSchema.virtual('inventoryItems', {
+  ref: 'InventoryItem',
+  localField: '_id',
+  foreignField: 'warehouse',
+});
+
+// Ensure virtual fields are included when converting to JSON or Object
+warehouseSchema.set('toObject', { virtuals: true });
+warehouseSchema.set('toJSON', { virtuals: true });
 
 module.exports = mongoose.model('Warehouse', warehouseSchema);
