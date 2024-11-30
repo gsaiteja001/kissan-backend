@@ -67,15 +67,14 @@ const inventoryItemSchema = new mongoose.Schema({
 });
 
 // Warehouse Schema
-const warehouseSchema = new mongoose.Schema(
-  {
+const warehouseSchema = new mongoose.Schema({
      warehouseId: {
       type: String,
       default: uuidv4, // Automatically generate UUIDv4
       unique: true, 
       immutable: true,
     },
-    warehouseName: { type: String, required: true, unique: true },
+    warehouseName: { type: String, required: true},
     address: { type: addressSchema, required: false },
     contactInfo: {
       phone: { type: String, required: false },
