@@ -2,7 +2,7 @@
 
 const mongoose = require('mongoose');
 const Product = require('../models/Product');
-const InventoryItem = require('../models/InventoryItem');
+const InventoryItem = require('../modal/InventoryItem');
 
 /**
  * @desc    Create a new product
