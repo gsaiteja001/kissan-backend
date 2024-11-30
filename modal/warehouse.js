@@ -24,13 +24,13 @@ const staffSchema = new mongoose.Schema({
     phone: { type: String },
     email: { type: String },
   },
-  employeeId: { type: String, unique: true },
+  employeeId: { type: String, required: false },
   shift: { type: String }, // e.g., Day, Night
 });
 
 // Inventory Item Schema
 const inventoryItemSchema = new mongoose.Schema({
-  sku: { type: String, required: false, unique: true },
+  sku: { type: String, required: false },
   productName: { type: String, required: false },
   category: {
     type: String,
