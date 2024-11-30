@@ -16,21 +16,6 @@ const addressSchema = new mongoose.Schema({
   },
 });
 
-// Staff Schema
-const staffSchema = new mongoose.Schema({
-    name: { type: String, required: false },
-    role: { type: String, required: false }, // e.g., Manager, Worker, Supervisor
-    contactInfo: {
-       phone: { type: String },
-       email: { type: String },
-       },
-    employeeId: {
-          type: String,
-          default: uuidv4, // Automatically generate UUIDv4
-          unique: true, 
-          immutable: true,},
-    shift: { type: String }, // e.g., Day, Night
-    });
 
 // Inventory Item Schema
 const inventoryItemSchema = new mongoose.Schema({
@@ -93,7 +78,7 @@ const warehouseSchema = new mongoose.Schema({
       default: 'FIFO',
     },
 
-    // staff: [staffSchema],
+
     securityMeasures: {
       cctv: { type: Boolean, default: true },
       accessControl: { type: Boolean, default: true },
