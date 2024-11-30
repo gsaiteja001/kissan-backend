@@ -164,8 +164,7 @@ exports.getAllWarehouses = async (req, res, next) => {
   try {
     const warehouses = await Warehouse.find()
       .populate('linkedSuppliers', 'name contactInfo')
-      .populate('linkedCustomers', 'name contactInfo')
-      .populate('linkedOrders', 'orderNumber status totalAmount')
+      // .populate('linkedOrders', 'orderNumber status totalAmount')
       .populate({
         path: 'inventoryItems',
         populate: {
