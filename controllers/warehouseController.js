@@ -71,6 +71,104 @@ exports.createWarehouse = async (req, res, next) => {
 };
 
 /**
+ * @desc    Update a staff member in a warehouse
+ * @route   PUT /api/warehouses/:id/staff/:staffId
+ * @access  Public (Adjust access as needed)
+ */
+exports.updateStaffMember = async (req, res, next) => {
+  try {
+    const { id: warehouseId, staffId } = req.params;
+    const updateData = req.body;
+
+    // Validate Warehouse
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      return res.status(404).json({
+        success: false,
+        message: 'Warehouse not found.',
+      });
+    }
+
+    // Find the staff member
+    const staffMember = warehouse.staff.id(staffId);
+    if (!staffMember) {
+      return res.status(404).json({
+        success: false,
+        message: 'Staff member not found in the specified warehouse.',
+      });
+    }
+
+    // If updating employeeId, check for duplicates
+    if (updateData.employeeId && updateData.employeeId !== staffMember.employeeId) {
+      const duplicate = warehouse.staff.find(member => member.employeeId === updateData.employeeId);
+      if (duplicate) {
+        return res.status(400).json({
+          success: false,
+          message: 'Another staff member with this employeeId already exists in the warehouse.',
+        });
+      }
+    }
+
+    // Update staff member details
+    staffMember.set(updateData);
+    await warehouse.save();
+
+    res.status(200).json({
+      success: true,
+      data: staffMember,
+    });
+  } catch (error) {
+    if (error.code === 11000 && error.keyPattern['staff.employeeId']) {
+      error.message = 'Duplicate employeeId found in staff members.';
+      error.status = 400;
+    }
+    next(error);
+  }
+};
+
+
+/**
+ * @desc    Add a staff member to a warehouse using atomic operation
+ * @route   POST /api/warehouses/:id/staff
+ * @access  Public (Adjust access as needed)
+ */
+exports.addStaffMemberAtomic = async (req, res, next) => {
+  try {
+    const warehouseId = req.params.id;
+    const { employeeId, name, role, contactInfo } = req.body;
+
+    const updatedWarehouse = await Warehouse.findOneAndUpdate(
+      { _id: warehouseId, 'staff.employeeId': { $ne: employeeId } }, // Ensure no duplicate
+      { 
+        $push: { 
+          staff: { employeeId, name, role, contactInfo } 
+        } 
+      },
+      { new: true }
+    );
+
+    if (!updatedWarehouse) {
+      return res.status(400).json({
+        success: false,
+        message: 'A staff member with this employeeId already exists in the warehouse.',
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: updatedWarehouse.staff.find(member => member.employeeId === employeeId),
+    });
+  } catch (error) {
+    if (error.code === 11000 && error.keyPattern['staff.employeeId']) {
+      error.message = 'Duplicate employeeId found in staff members.';
+      error.status = 400;
+    }
+    next(error);
+  }
+};
+
+
+/**
  * @desc    Get all warehouses
  * @route   GET /api/warehouses
  * @access  Public (Adjust access as needed)
