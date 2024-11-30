@@ -108,8 +108,6 @@ const warehouseSchema = new mongoose.Schema({
       },
     ],
     linkedSuppliers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' }],
-    linkedCustomers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Farmer' }],
-    linkedOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     integrations: {
       erpSystem: { type: String }, // e.g., "SAP", "Oracle"
       crmSystem: { type: String }, // e.g., "Salesforce"
