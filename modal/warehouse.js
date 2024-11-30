@@ -17,16 +17,16 @@ const addressSchema = new mongoose.Schema({
 });
 
 // Staff Schema
-const staffSchema = new mongoose.Schema({
-  name: { type: String, required: false },
-  role: { type: String, required: false }, // e.g., Manager, Worker, Supervisor
-  contactInfo: {
-    phone: { type: String },
-    email: { type: String },
-  },
-  employeeId: { type: String, required: false },
-  shift: { type: String }, // e.g., Day, Night
-});
+// const staffSchema = new mongoose.Schema({
+//   name: { type: String, required: false },
+//   role: { type: String, required: false }, // e.g., Manager, Worker, Supervisor
+//   contactInfo: {
+//     phone: { type: String },
+//     email: { type: String },
+//   },
+//   employeeId: { type: String, required: false },
+//   shift: { type: String }, // e.g., Day, Night
+// });
 
 // Inventory Item Schema
 const inventoryItemSchema = new mongoose.Schema({
@@ -88,8 +88,8 @@ const warehouseSchema = new mongoose.Schema({
       enum: ['FIFO', 'LIFO', 'FEFO'], // FEFO: First Expire, First Out
       default: 'FIFO',
     },
-    // Removed the embedded inventoryItems field
-    staff: [staffSchema],
+
+    // staff: [staffSchema],
     securityMeasures: {
       cctv: { type: Boolean, default: true },
       accessControl: { type: Boolean, default: true },
