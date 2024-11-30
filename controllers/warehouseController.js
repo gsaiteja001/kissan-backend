@@ -193,8 +193,7 @@ exports.getWarehouseById = async (req, res, next) => {
   try {
     const warehouse = await Warehouse.findById(req.params.id)
       .populate('linkedSuppliers', 'name contactInfo')
-      .populate('linkedCustomers', 'name contactInfo')
-      .populate('linkedOrders', 'orderNumber status totalAmount')
+      // .populate('linkedOrders', 'orderNumber status totalAmount')
       .populate({
         path: 'inventoryItems',
         populate: { path: 'product', select: 'name category price' },
