@@ -12,6 +12,8 @@ const {
   getWarehouseInventory,
 } = require('../controllers/warehouseController');
 
+const { addProductToWarehouse, removeProductFromWarehouse, listInventoryItems, getAllWarehousesWithInventory } = require('../services/inventoryService');
+
 const router = express.Router();
 
 // Create a new warehouse
@@ -40,5 +42,19 @@ router.delete('/:id/inventory/:inventoryId', deleteInventoryItem);
 
 // Get inventory items for a warehouse
 router.get('/:id/inventory', getWarehouseInventory);
+
+
+
+// Add Product to Warehouse
+router.post('/warehouses/:warehouseId/products', addProductToWarehouse);
+
+// Remove Product from Warehouse
+router.delete('/warehouses/:warehouseId/products/:productId', removeProductFromWarehouse);
+
+// List Inventory Items for a Warehouse
+router.get('/warehouses/:warehouseId/inventory', listInventoryItems);
+
+// Get All Warehouses with Inventory Items
+router.get('/warehouses/inventory', getAllWarehousesWithInventory);
 
 module.exports = router;
