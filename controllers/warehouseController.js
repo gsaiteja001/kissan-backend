@@ -23,20 +23,8 @@ exports.createWarehouse = async (req, res, next) => {
       storageCapacity,
       inventoryManagementSystem,
       temperatureControlled,
-      staff, // Accept staff array from request body
-    } = req.body;
 
-    // Optional: Validate staff array for duplicate employeeIds before saving
-    if (staff && Array.isArray(staff)) {
-      const employeeIds = staff.map(member => member.employeeId);
-      const uniqueEmployeeIds = new Set(employeeIds);
-      if (uniqueEmployeeIds.size !== employeeIds.length) {
-        return res.status(400).json({
-          success: false,
-          message: 'Duplicate employeeId found in staff members.',
-        });
-      }
-    }
+    } = req.body;
 
     const newWarehouse = new Warehouse({
       warehouseName,
@@ -45,7 +33,6 @@ exports.createWarehouse = async (req, res, next) => {
       storageCapacity,
       inventoryManagementSystem,
       temperatureControlled,
-      staff, // Add staff to the warehouse
     });
 
     const savedWarehouse = await newWarehouse.save();
