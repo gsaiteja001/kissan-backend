@@ -136,6 +136,109 @@ exports.updateStock = async (warehouseId, productId, quantity) => {
 
 
 
+// Add Product to Warehouse
+async function addProductToWarehouse(warehouseId, productData, quantity) {
+  if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
+    throw new Error('Invalid warehouse ID.');
+  }
+
+  const warehouse = await Warehouse.findById(warehouseId);
+  if (!warehouse) {
+    throw new Error('Warehouse not found.');
+  }
+
+  let product;
+
+  if (productData.productId) {
+    // Check if product exists
+    product = await Product.findOne({ productId: productData.productId });
+    if (!product) {
+      throw new Error('Product with the given productId does not exist.');
+    }
+  } else {
+    // Create a new product
+    product = new Product(productData);
+    await product.save();
+  }
+
+  // Check if InventoryItem exists
+  let inventoryItem = await InventoryItem.findOne({
+    warehouse: warehouseId,
+    product: product._id,
+  });
+
+  if (inventoryItem) {
+    // Update existing inventory item
+    inventoryItem.stockQuantity += quantity;
+    inventoryItem.lastUpdated = Date.now();
+  } else {
+    // Create a new inventory item
+    inventoryItem = new InventoryItem({
+      warehouse: warehouseId,
+      product: product._id,
+      stockQuantity: quantity,
+    });
+  }
+
+  await inventoryItem.save();
+
+  // Update total stock in Product
+  await product.updateTotalStock();
+
+  return inventoryItem;
+}
+
+// Remove Product from Warehouse
+async function removeProductFromWarehouse(warehouseId, productId) {
+  if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
+    throw new Error('Invalid warehouse ID.');
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new Error('Invalid product ID.');
+  }
+
+  const inventoryItem = await InventoryItem.findOneAndDelete({
+    warehouse: warehouseId,
+    product: productId,
+  });
+
+  if (!inventoryItem) {
+    throw new Error('Inventory item not found.');
+  }
+
+  // Update total stock in Product
+  const product = await Product.findById(productId);
+  if (product) {
+    await product.updateTotalStock();
+  }
+
+  return inventoryItem;
+}
+
+// List Inventory Items for a Warehouse
+async function listInventoryItems(warehouseId) {
+  if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
+    throw new Error('Invalid warehouse ID.');
+  }
+
+  const inventoryItems = await InventoryItem.find({ warehouse: warehouseId })
+    .populate('product')
+    .populate('warehouse');
+
+  return inventoryItems;
+}
+
+// Get All Warehouses with Inventory Items
+async function getAllWarehousesWithInventory() {
+  const warehouses = await Warehouse.find({})
+    .populate({
+      path: 'inventoryItems',
+      populate: { path: 'product' },
+    });
+
+  return warehouses;
+}
 
 
 module.exports = {
@@ -143,5 +246,9 @@ module.exports = {
   decreaseStock,
   getStockLevel,
   checkReorderLevels,
-  // ... other inventory-related functions
+  updateStock,
+  addProductToWarehouse,
+  removeProductFromWarehouse,
+  listInventoryItems,
+  getAllWarehousesWithInventory,
 };
