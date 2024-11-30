@@ -1,8 +1,8 @@
 // controllers/reportController.js
 
 const Sale = require('../modal/Sale');
-const Product = require('../modal/Product');
-const Warehouse = require('../modal/Warehouse');
+const Product = require('../modal/product');
+const Warehouse = require('../modal/warehouse');
 
 /**
  * @desc    Get top-selling products per warehouse
