@@ -5,12 +5,12 @@ const InventoryItemSchema = new mongoose.Schema(
   {
     warehouse: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Warehouse',
+      ref: 'warehouse',
       required: true,
     },
     product: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
+      ref: 'product',
       required: true,
     },
     stockQuantity: {
