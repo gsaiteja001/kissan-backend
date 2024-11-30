@@ -1,4 +1,8 @@
-const InventoryItem = require('../models/InventoryItem');
+const InventoryItem = require('../modal/InventoryItem');
+
+const Warehouse = require('../modal/warehouse');
+const Product = require('../modal/product');
+const InventoryItem = require('../modal/InventoryItem');
 
 
 
