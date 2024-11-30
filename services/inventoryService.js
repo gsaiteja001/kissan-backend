@@ -71,14 +71,14 @@ async function getStockLevel(warehouseId, productId) {
 
 async function checkReorderLevels() {
   const itemsToReorder = await InventoryItem.find({
-    stockQuantity: { $lte: '$reorderLevel' },
+    $expr: { $lte: ["$stockQuantity", "$reorderLevel"] },
   }).populate('product warehouse');
 
   itemsToReorder.forEach((item) => {
     console.log(
       `Reorder Alert: Product ${item.product.name.en} in warehouse ${item.warehouse.warehouseName} is below reorder level.`
     );
-    // Send email or notification
+    // TODO: Implement email or notification logic here
   });
 }
 
