@@ -17,7 +17,7 @@ const Order = require('../modal/order');
 exports.createWarehouse = async (req, res, next) => {
   try {
     const {
-      warehouseId,
+      // Remove warehouseId from destructuring
       warehouseName,
       address,
       contactInfo,
@@ -27,7 +27,7 @@ exports.createWarehouse = async (req, res, next) => {
     } = req.body;
 
     const newWarehouse = new Warehouse({
-      warehouseId,
+      // Exclude warehouseId to let Mongoose generate it
       warehouseName,
       address,
       contactInfo,
@@ -43,8 +43,16 @@ exports.createWarehouse = async (req, res, next) => {
     });
   } catch (error) {
     if (error.code === 11000) {
+      // Determine which field caused the duplicate key error
+      const duplicatedField = Object.keys(error.keyPattern)[0];
+      if (duplicatedField === 'warehouseName') {
+        error.message = 'Warehouse with this name already exists.';
+      } else if (duplicatedField === 'warehouseId') {
+        error.message = 'Warehouse with this ID already exists.';
+      } else {
+        error.message = 'Duplicate key error on field: ' + duplicatedField;
+      }
       error.status = 400;
-      error.message = 'Warehouse with this name already exists.';
     }
     next(error);
   }
