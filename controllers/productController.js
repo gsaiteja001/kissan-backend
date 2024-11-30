@@ -1,7 +1,7 @@
 // controllers/productController.js
 
 const mongoose = require('mongoose');
-const Product = require('../models/Product');
+const Product = require('../modal/product');
 const InventoryItem = require('../modal/InventoryItem');
 
 /**
