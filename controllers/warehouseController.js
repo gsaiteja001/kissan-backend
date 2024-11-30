@@ -10,30 +10,42 @@ const Farmer = require('../modal/farmers');
 const Order = require('../modal/order'); 
 
 /**
- * @desc    Create a new warehouse
+ * @desc    Create a new warehouse with optional staff members
  * @route   POST /api/warehouses
  * @access  Public (Adjust access as needed)
  */
 exports.createWarehouse = async (req, res, next) => {
   try {
     const {
-      // Remove warehouseId from destructuring
       warehouseName,
       address,
       contactInfo,
       storageCapacity,
       inventoryManagementSystem,
       temperatureControlled,
+      staff, // Accept staff array from request body
     } = req.body;
 
+    // Optional: Validate staff array for duplicate employeeIds before saving
+    if (staff && Array.isArray(staff)) {
+      const employeeIds = staff.map(member => member.employeeId);
+      const uniqueEmployeeIds = new Set(employeeIds);
+      if (uniqueEmployeeIds.size !== employeeIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Duplicate employeeId found in staff members.',
+        });
+      }
+    }
+
     const newWarehouse = new Warehouse({
-      // Exclude warehouseId to let Mongoose generate it
       warehouseName,
       address,
       contactInfo,
       storageCapacity,
       inventoryManagementSystem,
       temperatureControlled,
+      staff, // Add staff to the warehouse
     });
 
     const savedWarehouse = await newWarehouse.save();
@@ -47,8 +59,8 @@ exports.createWarehouse = async (req, res, next) => {
       const duplicatedField = Object.keys(error.keyPattern)[0];
       if (duplicatedField === 'warehouseName') {
         error.message = 'Warehouse with this name already exists.';
-      } else if (duplicatedField === 'warehouseId') {
-        error.message = 'Warehouse with this ID already exists.';
+      } else if (duplicatedField === 'staff.employeeId') {
+        error.message = 'Duplicate employeeId found in staff members.';
       } else {
         error.message = 'Duplicate key error on field: ' + duplicatedField;
       }
