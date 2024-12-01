@@ -103,12 +103,13 @@ const updateWarehouseOccupancy = async (warehouseId) => {
 
 
 // Add Product to Warehouse
+// Add Product to Warehouse
 async function addProductToWarehouse(warehouseId, productData, quantity) {
-  if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
-    throw new Error('Invalid warehouse ID.');
+  if (!warehouseId) {
+    throw new Error('Warehouse ID is required.');
   }
 
-  const warehouse = await Warehouse.findById(warehouseId);
+  const warehouse = await Warehouse.findOne({ warehouseId });
   if (!warehouse) {
     throw new Error('Warehouse not found.');
   }
@@ -129,10 +130,10 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
     await product.save();
   }
 
-  // Ensure correct referencing using product._id (ObjectId)
+  // Find or create inventory item using warehouseId and productId
   let inventoryItem = await InventoryItem.findOne({
-    warehouse: warehouseId,
-    product: product._id, // Changed from product.productId to product._id
+    warehouseId: warehouseId,
+    productId: product.productId,
   });
 
   if (inventoryItem) {
@@ -142,34 +143,31 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
   } else {
     // Create a new inventory item
     inventoryItem = new InventoryItem({
-      warehouse: warehouseId,
-      product: product._id, // Changed from product.productId to product._id
+      warehouse: warehouse._id, // Retain ObjectId for relations
+      warehouseId: warehouseId, // Use warehouseId for queries
+      product: product._id, // Retain ObjectId for relations
+      productId: product.productId, // Use productId for queries
       stockQuantity: quantity,
     });
   }
 
   await inventoryItem.save();
 
-  // Optionally, update total stock in Product
-  // await product.updateTotalStock();
-
   return inventoryItem;
 }
 
 
+
+
 // Remove Product from Warehouse
 async function removeProductFromWarehouse(warehouseId, productId) {
-  if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
-    throw new Error('Invalid warehouse ID.');
-  }
-
-  if (!mongoose.Types.ObjectId.isValid(productId)) {
-    throw new Error('Invalid product ID.');
+  if (!warehouseId || !productId) {
+    throw new Error('Both warehouseId and productId are required.');
   }
 
   const inventoryItem = await InventoryItem.findOneAndDelete({
-    warehouse: warehouseId,
-    product: productId,
+    warehouseId: warehouseId,
+    productId: productId,
   });
 
   if (!inventoryItem) {
@@ -177,7 +175,7 @@ async function removeProductFromWarehouse(warehouseId, productId) {
   }
 
   // Update total stock in Product
-  const product = await Product.findById(productId);
+  const product = await Product.findOne({ productId });
   if (product) {
     await product.updateTotalStock();
   }
@@ -185,18 +183,19 @@ async function removeProductFromWarehouse(warehouseId, productId) {
   return inventoryItem;
 }
 
-// List Inventory Items for a Warehouse
+
 async function listInventoryItems(warehouseId) {
-  if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
-    throw new Error('Invalid warehouse ID.');
+  if (!warehouseId) {
+    throw new Error('Warehouse ID is required.');
   }
 
-  const inventoryItems = await InventoryItem.find({ warehouse: warehouseId })
+  const inventoryItems = await InventoryItem.find({ warehouseId: warehouseId })
     .populate('product')
     .populate('warehouse');
 
   return inventoryItems;
 }
+
 
 // Get All Warehouses with Inventory Items
 async function getAllWarehousesWithInventory() {
