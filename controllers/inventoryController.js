@@ -64,12 +64,12 @@ exports.getAllWarehousesWithInventory = async (req, res) => {
 
 /**
  * @desc    Adjust stock for a product in a warehouse
- * @route   PATCH /api/warehouses/:id/inventory/:inventoryId/adjust
+ * @route   PATCH /api/warehouses/:id/inventory/:productId/adjust
  * @access  Public (Adjust access as needed)
  */
 exports.adjustStock = async (req, res, next) => {
   try {
-    const { id: warehouseId, inventoryId } = req.params;
+    const { id: warehouseId, productId } = req.params;
     const { quantity } = req.body; // Quantity to add/remove
 
     if (typeof quantity !== 'number') {
@@ -79,7 +79,7 @@ exports.adjustStock = async (req, res, next) => {
       });
     }
 
-    const inventoryItem = await updateStock(warehouseId, inventoryId, quantity);
+    const inventoryItem = await updateStock(warehouseId, productId, quantity);
 
     res.status(200).json({
       success: true,
