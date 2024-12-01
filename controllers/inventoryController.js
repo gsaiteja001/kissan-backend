@@ -58,6 +58,45 @@ exports.getAllWarehousesWithInventory = async (req, res) => {
 };
 
 
+
+/**
+ * @desc    Add multiple existing products to a warehouse with respective quantities
+ * @route   POST /api/inventory/warehouses/:warehouseId/products/multiple
+ * @access  Public (Adjust access as needed)
+ */
+exports.addMultipleProductsToWarehouse = async (req, res) => {
+  try {
+    const { warehouseId } = req.params;
+    const { products } = req.body; // Expecting an array of { productId, quantity }
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ message: 'Products array is required and cannot be empty.' });
+    }
+
+    // Validate each product entry
+    for (const product of products) {
+      if (!product.productId || !product.quantity) {
+        return res.status(400).json({ message: 'Each product must have a productId and quantity.' });
+      }
+      if (typeof product.quantity !== 'number' || product.quantity <= 0) {
+        return res.status(400).json({ message: `Invalid quantity for productId ${product.productId}. Quantity must be a positive number.` });
+      }
+    }
+
+    // Call the service function to handle the logic
+    const inventoryItems = await inventoryService.addMultipleProductsToWarehouse(warehouseId, products);
+
+    res.status(201).json({
+      message: 'Products added to warehouse successfully.',
+      data: inventoryItems,
+    });
+  } catch (error) {
+    console.error('Error adding multiple products to warehouse:', error);
+    res.status(500).json({ message: error.message || 'Failed to add products to warehouse.' });
+  }
+};
+
+
 /**
  * @desc    Update stock quantity for a product in a warehouse
  * @param   {String} warehouseId - Warehouse ObjectId
