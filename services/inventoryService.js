@@ -26,7 +26,7 @@ async function addStock(warehouseId, productId, quantity) {
   }
 
   await inventoryItem.save();
-}
+};
 
 
 async function decreaseStock(warehouseId, productId, quantitySold) {
@@ -47,7 +47,7 @@ async function decreaseStock(warehouseId, productId, quantitySold) {
   inventoryItem.lastUpdated = Date.now();
 
   await inventoryItem.save();
-}
+};
 
 
 
@@ -70,7 +70,7 @@ async function getStockLevel(warehouseId, productId) {
     product: inventoryItem.product.name,
     stockQuantity: inventoryItem.stockQuantity,
   };
-}
+};
 
 
 async function checkReorderLevels() {
@@ -84,7 +84,21 @@ async function checkReorderLevels() {
     );
     // TODO: Implement email or notification logic here
   });
-}
+};
+
+
+const updateWarehouseOccupancy = async (warehouseId) => {
+  const totalOccupancy = await InventoryItem.aggregate([
+    { $match: { warehouse: warehouseId } },
+    { $group: { _id: null, total: { $sum: '$stockQuantity' } } },
+  ]);
+
+  const warehouse = await Warehouse.findById(warehouseId);
+  if (warehouse) {
+    warehouse.currentOccupancy = totalOccupancy.length > 0 ? totalOccupancy[0].total : 0;
+    await warehouse.save();
+  }
+};
 
 
 /**
