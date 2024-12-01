@@ -58,5 +58,7 @@ router.get('/inventory', inventoryController.getAllWarehousesWithInventory);
 
 router.patch('/:warehouseId/inventory/:inventoryId/adjust', inventoryController.adjustStock);
 
+router.post('/:warehouseId/products/multiple', inventoryController.addMultipleProductsToWarehouse);
+
 
 module.exports = router;
