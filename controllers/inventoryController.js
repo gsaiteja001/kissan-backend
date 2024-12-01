@@ -1,6 +1,3 @@
-// controllers/inventoryController.js
-
-const { updateStock } = require('../services/inventoryService');
 
 const inventoryService = require('../services/inventoryService');
 
@@ -79,7 +76,7 @@ exports.adjustStock = async (req, res, next) => {
       });
     }
 
-    const inventoryItem = await updateStock(warehouseId, productId, quantity);
+    const inventoryItem = await inventoryService.updateStock(warehouseId, productId, quantity);
 
     res.status(200).json({
       success: true,
