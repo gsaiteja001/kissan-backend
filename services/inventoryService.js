@@ -211,18 +211,16 @@ async function getAllWarehousesWithInventory() {
 
 
 /**
- * @desc    Add multiple products to a warehouse with respective quantities
- * @param   {String} warehouseId - Warehouse ObjectId or warehouseId string
- * @param   {Array} products - Array of objects containing productId and quantity
- * @returns {Array} - Array of updated or created InventoryItems
- * @throws  {Error} - Throws error if validation fails or database operations fail
+ * Adds multiple products to a warehouse with respective quantities.
  */
-exports.addMultipleProductsToWarehouse = async (warehouseId, products) => {
+async function addMultipleProductsToWarehouse(warehouseId, products) {
   // Start a session for transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    console.log(`Adding multiple products to Warehouse ID: ${warehouseId}`);
+
     // Validate warehouseId
     if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
       throw new Error('Invalid warehouse ID.');
@@ -236,6 +234,8 @@ exports.addMultipleProductsToWarehouse = async (warehouseId, products) => {
     const inventoryItems = [];
 
     for (const { productId, quantity } of products) {
+      console.log(`Processing Product ID: ${productId} with Quantity: ${quantity}`);
+
       // Validate productId
       if (!mongoose.Types.ObjectId.isValid(productId)) {
         throw new Error(`Invalid product ID: ${productId}`);
@@ -257,6 +257,7 @@ exports.addMultipleProductsToWarehouse = async (warehouseId, products) => {
         inventoryItem.stockQuantity += quantity;
         inventoryItem.lastUpdated = Date.now();
         await inventoryItem.save({ session });
+        console.log(`Updated InventoryItem ID: ${inventoryItem._id}`);
       } else {
         // Create new InventoryItem
         inventoryItem = new InventoryItem({
@@ -266,27 +267,31 @@ exports.addMultipleProductsToWarehouse = async (warehouseId, products) => {
           // Initialize other fields as needed, e.g., reorderLevel
         });
         await inventoryItem.save({ session });
+        console.log(`Created new InventoryItem ID: ${inventoryItem._id}`);
       }
 
       inventoryItems.push(inventoryItem);
 
       // Update total stock in Product
       await product.updateTotalStock();
+      console.log(`Updated total stock for Product ID: ${product._id}`);
     }
 
     // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
+    console.log(`Successfully added multiple products to Warehouse ID: ${warehouseId}`);
+
     return inventoryItems;
   } catch (error) {
     // Abort the transaction in case of error
     await session.abortTransaction();
     session.endSession();
+    console.error(`Transaction aborted due to error: ${error.message}`);
     throw error;
   }
-};
-
+}
 
 module.exports = {
   addStock,
