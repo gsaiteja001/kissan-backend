@@ -58,6 +58,59 @@ exports.getAllWarehousesWithInventory = async (req, res) => {
 };
 
 
+/**
+ * @desc    Update stock quantity for a product in a warehouse
+ * @param   {String} warehouseId - Warehouse ObjectId
+ * @param   {String} productId - Product ObjectId
+ * @param   {Number} quantity - Quantity to add or remove (use negative to remove)
+ * @returns {Object} - Updated InventoryItem
+ * @throws  {Error} - Throws error if warehouse or product not found, or insufficient stock
+ */
+exports.updateStock = async (warehouseId, productId, quantity) => {
+  if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
+    throw new Error('Invalid warehouse ID.');
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new Error('Invalid product ID.');
+  }
+
+  const warehouse = await Warehouse.findById(warehouseId);
+  if (!warehouse) {
+    throw new Error('Warehouse not found.');
+  }
+
+  const product = await Product.findById(productId);
+  if (!product) {
+    throw new Error('Product not found.');
+  }
+
+  const inventoryItem = await InventoryItem.findOne({
+    warehouse: warehouseId,
+    product: productId,
+  });
+
+  if (!inventoryItem) {
+    throw new Error('Inventory item not found for the specified product and warehouse.');
+  }
+
+  if (inventoryItem.stockQuantity + quantity < 0) {
+    throw new Error('Insufficient stock.');
+  }
+
+  inventoryItem.stockQuantity += quantity;
+  inventoryItem.lastUpdated = Date.now();
+
+  await inventoryItem.save();
+
+  // Update total stock in Product
+  await product.updateTotalStock();
+
+  return inventoryItem;
+};
+
+
+
 
 /**
  * @desc    Adjust stock for a product in a warehouse
