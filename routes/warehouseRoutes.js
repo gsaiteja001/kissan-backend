@@ -45,18 +45,18 @@ router.get('/:id/inventory', getWarehouseInventory);
 
 
 // Add Product to Warehouse
-router.post('/warehouses/:warehouseId/products', inventoryController.addProductToWarehouse);
+router.post('/:warehouseId/products', inventoryController.addProductToWarehouse);
 
 // Remove Product from Warehouse
-router.delete('/warehouses/:warehouseId/products/:productId', inventoryController.removeProductFromWarehouse);
+router.delete('/:warehouseId/products/:productId', inventoryController.removeProductFromWarehouse);
 
 // List Inventory Items for a Warehouse
-router.get('/warehouses/:warehouseId/inventory', inventoryController.listInventoryItems);
+router.get('/:warehouseId/inventory', inventoryController.listInventoryItems);
 
 // Get All Warehouses with Inventory Items
-router.get('/warehouses/inventory', inventoryController.getAllWarehousesWithInventory);
+router.get('/inventory', inventoryController.getAllWarehousesWithInventory);
 
-router.patch('/warehouses/:warehouseId/inventory/:inventoryId/adjust', inventoryController.adjustStock);
+router.patch('/:warehouseId/inventory/:inventoryId/adjust', inventoryController.adjustStock);
 
 
 module.exports = router;
