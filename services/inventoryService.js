@@ -241,15 +241,15 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
         throw new Error(`Invalid product ID: ${productId}`);
       }
 
-      const product = await Product.findById(productId).session(session);
-      if (!product) {
-        throw new Error(`Product not found: ${productId}`);
-      }
+      const product = await Product.findOne({ productId }).session(session);
+        if (!product) {
+          throw new Error(`Product not found: ${productId}`);
+        }
 
       // Check if InventoryItem exists
       let inventoryItem = await InventoryItem.findOne({
         warehouse: warehouse._id,
-        product: product._id,
+        product: product.productId,
       }).session(session);
 
       if (inventoryItem) {
