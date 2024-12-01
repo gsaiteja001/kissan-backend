@@ -182,7 +182,7 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
   // Check if InventoryItem exists
   let inventoryItem = await InventoryItem.findOne({
     warehouse: warehouseId,
-    product: product._id,
+    product: product.productId,
   });
 
   if (inventoryItem) {
@@ -193,7 +193,7 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
     // Create a new inventory item
     inventoryItem = new InventoryItem({
       warehouse: warehouseId,
-      product: product._id,
+      product: product.productId,
       stockQuantity: quantity,
     });
   }
@@ -201,7 +201,7 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
   await inventoryItem.save();
 
   // Update total stock in Product
-  await product.updateTotalStock();
+  // await product.updateTotalStock();
 
   return inventoryItem;
 }
