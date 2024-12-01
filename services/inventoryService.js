@@ -210,6 +210,84 @@ async function getAllWarehousesWithInventory() {
 }
 
 
+/**
+ * @desc    Add multiple products to a warehouse with respective quantities
+ * @param   {String} warehouseId - Warehouse ObjectId or warehouseId string
+ * @param   {Array} products - Array of objects containing productId and quantity
+ * @returns {Array} - Array of updated or created InventoryItems
+ * @throws  {Error} - Throws error if validation fails or database operations fail
+ */
+exports.addMultipleProductsToWarehouse = async (warehouseId, products) => {
+  // Start a session for transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Validate warehouseId
+    if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
+      throw new Error('Invalid warehouse ID.');
+    }
+
+    const warehouse = await Warehouse.findById(warehouseId).session(session);
+    if (!warehouse) {
+      throw new Error('Warehouse not found.');
+    }
+
+    const inventoryItems = [];
+
+    for (const { productId, quantity } of products) {
+      // Validate productId
+      if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new Error(`Invalid product ID: ${productId}`);
+      }
+
+      const product = await Product.findById(productId).session(session);
+      if (!product) {
+        throw new Error(`Product not found: ${productId}`);
+      }
+
+      // Check if InventoryItem exists
+      let inventoryItem = await InventoryItem.findOne({
+        warehouse: warehouse._id,
+        product: product._id,
+      }).session(session);
+
+      if (inventoryItem) {
+        // Update existing InventoryItem
+        inventoryItem.stockQuantity += quantity;
+        inventoryItem.lastUpdated = Date.now();
+        await inventoryItem.save({ session });
+      } else {
+        // Create new InventoryItem
+        inventoryItem = new InventoryItem({
+          warehouse: warehouse._id,
+          product: product._id,
+          stockQuantity: quantity,
+          // Initialize other fields as needed, e.g., reorderLevel
+        });
+        await inventoryItem.save({ session });
+      }
+
+      inventoryItems.push(inventoryItem);
+
+      // Update total stock in Product
+      await product.updateTotalStock();
+    }
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    return inventoryItems;
+  } catch (error) {
+    // Abort the transaction in case of error
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
+
 module.exports = {
   addStock,
   decreaseStock,
@@ -218,5 +296,6 @@ module.exports = {
   addProductToWarehouse,
   removeProductFromWarehouse,
   listInventoryItems,
+  addMultipleProductsToWarehouse,
   getAllWarehousesWithInventory,
 };
