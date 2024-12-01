@@ -214,19 +214,13 @@ async function getAllWarehousesWithInventory() {
  * Adds multiple products to a warehouse with respective quantities.
  */
 async function addMultipleProductsToWarehouse(warehouseId, products) {
-  // Start a session for transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     console.log(`Adding multiple products to Warehouse ID: ${warehouseId}`);
 
-    // Validate warehouseId
-    if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
-      throw new Error('Invalid warehouse ID.');
-    }
-
-    const warehouse = await Warehouse.findById(warehouseId).session(session);
+    const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
     if (!warehouse) {
       throw new Error('Warehouse not found.');
     }
@@ -236,20 +230,15 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
     for (const { productId, quantity } of products) {
       console.log(`Processing Product ID: ${productId} with Quantity: ${quantity}`);
 
-      // Validate productId
-      if (!mongoose.Types.ObjectId.isValid(productId)) {
-        throw new Error(`Invalid product ID: ${productId}`);
-      }
-
       const product = await Product.findOne({ productId }).session(session);
-        if (!product) {
-          throw new Error(`Product not found: ${productId}`);
-        }
+      if (!product) {
+        throw new Error(`Product not found: ${productId}`);
+      }
 
       // Check if InventoryItem exists
       let inventoryItem = await InventoryItem.findOne({
-        warehouse: warehouse._id,
-        product: product.productId,
+        warehouse: warehouseId,
+        product: productId,
       }).session(session);
 
       if (inventoryItem) {
@@ -261,8 +250,8 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       } else {
         // Create new InventoryItem
         inventoryItem = new InventoryItem({
-          warehouse: warehouse._id,
-          product: product._id,
+          warehouse: warehouseId,
+          product: productId,
           stockQuantity: quantity,
           // Initialize other fields as needed, e.g., reorderLevel
         });
@@ -274,10 +263,9 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
 
       // Update total stock in Product
       await product.updateTotalStock();
-      console.log(`Updated total stock for Product ID: ${product._id}`);
+      console.log(`Updated total stock for Product ID: ${product.productId}`);
     }
 
-    // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
@@ -285,7 +273,6 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
 
     return inventoryItems;
   } catch (error) {
-    // Abort the transaction in case of error
     await session.abortTransaction();
     session.endSession();
     console.error(`Transaction aborted due to error: ${error.message}`);
