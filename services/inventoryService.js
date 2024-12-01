@@ -1,5 +1,5 @@
 
-
+const mongoose = require('mongoose');
 const Warehouse = require('../modal/warehouse');
 const Product = require('../modal/product');
 const InventoryItem = require('../modal/InventoryItem');
