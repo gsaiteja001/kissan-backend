@@ -34,6 +34,7 @@ const createLocalizedField = () => ({
   ta: { type: String, trim: true },
   ml: { type: String, trim: true },
   bn: { type: String, trim: true },
+  hi: { type: String, trim: true },
 });
 
 const ProductSchema = new mongoose.Schema(
