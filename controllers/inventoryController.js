@@ -97,6 +97,7 @@ exports.addMultipleProductsToWarehouse = async (req, res) => {
 };
 
 
+
 /**
  * @desc    Update stock quantity for a product in a warehouse
  * @param   {String} warehouseId - Warehouse ObjectId
