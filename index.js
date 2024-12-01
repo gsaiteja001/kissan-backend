@@ -112,6 +112,10 @@ const uploadRouter = require('./upload')
 app.use('/upload', uploadRouter);
 
 
+const productImage = require('./productImagesUpload')
+app.use('/upload_product_image',productImage);
+
+
 // app.post('/generateAppCheckToken', async (req, res) => {
 //   try {
 //     const appId = '1:457305600341:web:90185d6f6d5dcde5e37fdc'; // Replace with your actual appId
