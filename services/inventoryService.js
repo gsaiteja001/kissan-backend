@@ -116,21 +116,23 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
   let product;
 
   if (productData.productId) {
-    // Check if product exists
+    // Attempt to find existing product
     product = await Product.findOne({ productId: productData.productId });
     if (!product) {
-      throw new Error('Product with the given productId does not exist.');
+      // Create a new product since it doesn't exist
+      product = new Product(productData);
+      await product.save();
     }
   } else {
-    // Create a new product
+    // Create a new product without a specified productId
     product = new Product(productData);
     await product.save();
   }
 
-  // Check if InventoryItem exists
+  // Ensure correct referencing using product._id (ObjectId)
   let inventoryItem = await InventoryItem.findOne({
     warehouse: warehouseId,
-    product: product.productId,
+    product: product._id, // Changed from product.productId to product._id
   });
 
   if (inventoryItem) {
@@ -141,18 +143,19 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
     // Create a new inventory item
     inventoryItem = new InventoryItem({
       warehouse: warehouseId,
-      product: product.productId,
+      product: product._id, // Changed from product.productId to product._id
       stockQuantity: quantity,
     });
   }
 
   await inventoryItem.save();
 
-  // Update total stock in Product
+  // Optionally, update total stock in Product
   // await product.updateTotalStock();
 
   return inventoryItem;
 }
+
 
 // Remove Product from Warehouse
 async function removeProductFromWarehouse(warehouseId, productId) {
