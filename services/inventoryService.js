@@ -102,58 +102,72 @@ const updateWarehouseOccupancy = async (warehouseId) => {
 
 
 
-// Add Product to Warehouse
-// Add Product to Warehouse
-async function addProductToWarehouse(warehouseId, productData, quantity) {
-  if (!warehouseId) {
-    throw new Error('Warehouse ID is required.');
-  }
+/**
+ * Adds multiple products to a warehouse with respective quantities.
+ * Ensures no duplicates are created for already existing productId in the inventory.
+ */
+async function addMultipleProductsToWarehouse(warehouseId, products) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const warehouse = await Warehouse.findOne({ warehouseId });
-  if (!warehouse) {
-    throw new Error('Warehouse not found.');
-  }
+  try {
+    console.log(`Adding multiple products to Warehouse ID: ${warehouseId}`);
 
-  let product;
-
-  if (productData.productId) {
-    // Attempt to find existing product
-    product = await Product.findOne({ productId: productData.productId });
-    if (!product) {
-      // Create a new product since it doesn't exist
-      product = new Product(productData);
-      await product.save();
+    const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
+    if (!warehouse) {
+      throw new Error('Warehouse not found.');
     }
-  } else {
-    // Create a new product without a specified productId
-    product = new Product(productData);
-    await product.save();
+
+    const inventoryItems = [];
+
+    for (const { productId, quantity } of products) {
+      console.log(`Processing Product ID: ${productId} with Quantity: ${quantity}`);
+
+      const product = await Product.findOne({ productId }).session(session);
+      if (!product) {
+        throw new Error(`Product not found: ${productId}`);
+      }
+
+      // Check if InventoryItem exists
+      let inventoryItem = await InventoryItem.findOne({
+        warehouseId: warehouseId,
+        productId: productId,
+      }).session(session);
+
+      if (inventoryItem) {
+        // Update existing InventoryItem
+        inventoryItem.stockQuantity += quantity;
+        inventoryItem.lastUpdated = Date.now();
+        await inventoryItem.save({ session });
+        console.log(`Updated InventoryItem for Product ID: ${productId}`);
+      } else {
+        // Create new InventoryItem
+        inventoryItem = new InventoryItem({
+          warehouse: warehouse._id, // Store ObjectId for reference
+          warehouseId: warehouseId, // Store warehouseId for querying
+          product: product._id, // Store ObjectId for reference
+          productId: productId, // Store productId for querying
+          stockQuantity: quantity,
+        });
+        await inventoryItem.save({ session });
+        console.log(`Created new InventoryItem for Product ID: ${productId}`);
+      }
+
+      inventoryItems.push(inventoryItem);
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    console.log(`Successfully added multiple products to Warehouse ID: ${warehouseId}`);
+
+    return inventoryItems;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error(`Transaction aborted due to error: ${error.message}`);
+    throw error;
   }
-
-  // Find or create inventory item using warehouseId and productId
-  let inventoryItem = await InventoryItem.findOne({
-    warehouseId: warehouseId,
-    productId: product.productId,
-  });
-
-  if (inventoryItem) {
-    // Update existing inventory item
-    inventoryItem.stockQuantity += quantity;
-    inventoryItem.lastUpdated = Date.now();
-  } else {
-    // Create a new inventory item
-    inventoryItem = new InventoryItem({
-      warehouse: warehouse._id, // Retain ObjectId for relations
-      warehouseId: warehouseId, // Use warehouseId for queries
-      product: product._id, // Retain ObjectId for relations
-      productId: product.productId, // Use productId for queries
-      stockQuantity: quantity,
-    });
-  }
-
-  await inventoryItem.save();
-
-  return inventoryItem;
 }
 
 
