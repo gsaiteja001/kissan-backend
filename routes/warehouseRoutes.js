@@ -56,4 +56,7 @@ router.get('/warehouses/:warehouseId/inventory', inventoryController.listInvento
 // Get All Warehouses with Inventory Items
 router.get('/warehouses/inventory', inventoryController.getAllWarehousesWithInventory);
 
+router.patch('/warehouses/:warehouseId/inventory/:inventoryId/adjust', inventoryController.adjustStock);
+
+
 module.exports = router;
