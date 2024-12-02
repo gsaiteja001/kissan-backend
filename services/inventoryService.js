@@ -14,6 +14,8 @@ async function addStock(warehouseId, productId, quantity) {
 
   if (inventoryItem) {
     // Update existing inventory item
+    warehouseId: warehouseId,
+    productId: product.productId,
     inventoryItem.stockQuantity += quantity;
     inventoryItem.lastUpdated = Date.now();
   } else {
