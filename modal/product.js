@@ -1,6 +1,8 @@
-const mongoose = require('mongoose');
+// models/Product.js
 
+const mongoose = require('mongoose'); 
 const InventoryItem = require('./InventoryItem');
+const LocalizedStringSchema = require('./LocalizedString');
 
 const ReviewSchema = new mongoose.Schema(
   {
@@ -28,17 +30,6 @@ const ReviewSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Helper function to create multilingual fields
-const createLocalizedField = () => ({
-  en: { type: String, required: true, trim: true },
-  te: { type: String, trim: true },
-  kn: { type: String, trim: true },
-  ta: { type: String, trim: true },
-  ml: { type: String, trim: true },
-  bn: { type: String, trim: true },
-  hi: { type: String, trim: true },
-});
-
 const ProductSchema = new mongoose.Schema(
   {
     productId: {
@@ -48,7 +39,7 @@ const ProductSchema = new mongoose.Schema(
       trim: true,
     },
     name: {
-      type: createLocalizedField(),
+      type: LocalizedStringSchema,
       required: true,
     },
     category: {
@@ -71,7 +62,7 @@ const ProductSchema = new mongoose.Schema(
       required: false,
     },
     description: {
-      type: createLocalizedField(),
+      type: LocalizedStringSchema,
       trim: true,
     },
     price: {
@@ -131,19 +122,19 @@ const ProductSchema = new mongoose.Schema(
       height: { type: Number, min: [0, 'Height cannot be negative'] },
     },
     applicationMethod: {
-      type: createLocalizedField(),
+      type: LocalizedStringSchema,
       trim: true,
     },
     usageInstructions: {
-      type: createLocalizedField(),
+      type: LocalizedStringSchema,
       trim: true,
     },
     safetyInstructions: {
-      type: createLocalizedField(),
+      type: LocalizedStringSchema,
       trim: true,
     },
     composition: {
-      type: createLocalizedField(),
+      type: LocalizedStringSchema, 
       trim: true,
     },
     expirationDate: {
@@ -156,7 +147,7 @@ const ProductSchema = new mongoose.Schema(
       },
     ],
     power: {
-      type: Number, // in horsepower
+      type: Number, 
       min: [0, 'Power cannot be negative'],
     },
     engineType: {
@@ -169,12 +160,12 @@ const ProductSchema = new mongoose.Schema(
     },
     features: [
       {
-        type: createLocalizedField(),
+        type: LocalizedStringSchema, 
         trim: true,
       },
     ],
     warranty: {
-      type: createLocalizedField(),
+      type: LocalizedStringSchema,
       trim: true,
     },
     averageRating: {
@@ -189,7 +180,7 @@ const ProductSchema = new mongoose.Schema(
       min: [0, 'Review count cannot be negative'],
     },
     reviews: [ReviewSchema],
-     hazardous: { 
+    hazardous: { 
       type: Boolean,
       default: false,
     },
@@ -206,17 +197,16 @@ const ProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-
 // Add virtual field for inventory items
-    ProductSchema.virtual('inventoryItems', {
-      ref: 'InventoryItem',
-      localField: '_id',
-      foreignField: 'product',
-    });
-    
-    ProductSchema.set('toObject', { virtuals: true });
-    ProductSchema.set('toJSON', { virtuals: true });
+ProductSchema.virtual('inventoryItems', {
+  ref: 'InventoryItem',
+  localField: '_id',
+  foreignField: 'product',
+});
 
+// Ensure virtual fields are included when converting to JSON or Object
+ProductSchema.set('toObject', { virtuals: true });
+ProductSchema.set('toJSON', { virtuals: true });
 
 // Middleware to update total stock quantity in Product
 ProductSchema.methods.updateTotalStock = async function() {
@@ -255,6 +245,7 @@ ProductSchema.pre('save', function (next) {
   next();
 });
 
+// Pre-save middleware to calculate averageRating and reviewCount
 ProductSchema.pre('save', function (next) {
   if (this.reviews && this.reviews.length > 0) {
     const totalRating = this.reviews.reduce((sum, review) => sum + review.rating, 0);
