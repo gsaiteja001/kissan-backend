@@ -29,6 +29,6 @@ const InventoryItemSchema = new mongoose.Schema(
 );
 
 // Create a unique index to prevent duplicate entries for the same product in the same warehouse
-InventoryItemSchema.index({ warehouseId: 1, productId: 1 }, { unique: true });
+InventoryItemSchema.index({ productId: 1 }, { unique: true });
 
 module.exports = mongoose.model('InventoryItem', InventoryItemSchema);
