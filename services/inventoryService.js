@@ -291,72 +291,72 @@ async function getAllWarehousesWithInventory() {
 /**
  * Adds multiple products to a warehouse with respective quantities.
  */
-async function addMultipleProductsToWarehouse(warehouseId, products) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// async function addMultipleProductsToWarehouse(warehouseId, products) {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
 
-  try {
-    console.log(`Adding multiple products to Warehouse ID: ${warehouseId}`);
+//   try {
+//     console.log(`Adding multiple products to Warehouse ID: ${warehouseId}`);
 
-    const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
-    if (!warehouse) {
-      throw new Error('Warehouse not found.');
-    }
+//     const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
+//     if (!warehouse) {
+//       throw new Error('Warehouse not found.');
+//     }
 
-    const inventoryItems = [];
+//     const inventoryItems = [];
 
-    for (const { productId, quantity } of products) {
-      console.log(`Processing Product ID: ${productId} with Quantity: ${quantity}`);
+//     for (const { productId, quantity } of products) {
+//       console.log(`Processing Product ID: ${productId} with Quantity: ${quantity}`);
 
-      const product = await Product.findOne({ productId }).session(session);
-      if (!product) {
-        throw new Error(`Product not found: ${productId}`);
-      }
+//       const product = await Product.findOne({ productId }).session(session);
+//       if (!product) {
+//         throw new Error(`Product not found: ${productId}`);
+//       }
 
-      // Check if InventoryItem exists
-      let inventoryItem = await InventoryItem.findOne({
-        warehouse: warehouseId,
-        product: productId,
-      }).session(session);
+//       // Check if InventoryItem exists
+//       let inventoryItem = await InventoryItem.findOne({
+//         warehouse: warehouseId,
+//         product: productId,
+//       }).session(session);
 
-      if (inventoryItem) {
-        // Update existing InventoryItem
-        inventoryItem.stockQuantity += quantity;
-        inventoryItem.lastUpdated = Date.now();
-        await inventoryItem.save({ session });
-        console.log(`Updated InventoryItem ID: ${inventoryItem._id}`);
-      } else {
-        // Create new InventoryItem
-        inventoryItem = new InventoryItem({
-          warehouse: warehouseId,
-          product: productId,
-          stockQuantity: quantity,
-          // Initialize other fields as needed, e.g., reorderLevel
-        });
-        await inventoryItem.save({ session });
-        console.log(`Created new InventoryItem ID: ${inventoryItem._id}`);
-      }
+//       if (inventoryItem) {
+//         // Update existing InventoryItem
+//         inventoryItem.stockQuantity += quantity;
+//         inventoryItem.lastUpdated = Date.now();
+//         await inventoryItem.save({ session });
+//         console.log(`Updated InventoryItem ID: ${inventoryItem._id}`);
+//       } else {
+//         // Create new InventoryItem
+//         inventoryItem = new InventoryItem({
+//           warehouse: warehouseId,
+//           product: productId,
+//           stockQuantity: quantity,
+//           // Initialize other fields as needed, e.g., reorderLevel
+//         });
+//         await inventoryItem.save({ session });
+//         console.log(`Created new InventoryItem ID: ${inventoryItem._id}`);
+//       }
 
-      inventoryItems.push(inventoryItem);
+//       inventoryItems.push(inventoryItem);
 
-      // Update total stock in Product
-      await product.updateTotalStock();
-      console.log(`Updated total stock for Product ID: ${product.productId}`);
-    }
+//       // Update total stock in Product
+//       await product.updateTotalStock();
+//       console.log(`Updated total stock for Product ID: ${product.productId}`);
+//     }
 
-    await session.commitTransaction();
-    session.endSession();
+//     await session.commitTransaction();
+//     session.endSession();
 
-    console.log(`Successfully added multiple products to Warehouse ID: ${warehouseId}`);
+//     console.log(`Successfully added multiple products to Warehouse ID: ${warehouseId}`);
 
-    return inventoryItems;
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error(`Transaction aborted due to error: ${error.message}`);
-    throw error;
-  }
-}
+//     return inventoryItems;
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     console.error(`Transaction aborted due to error: ${error.message}`);
+//     throw error;
+//   }
+// }
 
 module.exports = {
   addStock,
