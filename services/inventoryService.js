@@ -200,9 +200,7 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       } else {
         // Create new InventoryItem
         inventoryItem = new InventoryItem({
-          warehouse: warehouse._id, // Assign ObjectId reference
           warehouseId: warehouseId, // String identifier
-          product: product._id, // Assign ObjectId reference
           productId: productId, // String identifier
           stockQuantity: quantity,
         });
