@@ -9,7 +9,7 @@ const SupplierController = require('../controllers/SupplierController');
  * @desc    Add a new supplier
  * @access  Public (Update as per your authentication strategy)
  */
-router.post('/', async (req, res) => {
+router.post('/create', async (req, res) => {
   try {
     const supplier = await SupplierController.addSupplier(req.body);
     res.status(201).json(supplier);
