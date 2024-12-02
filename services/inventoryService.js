@@ -6,29 +6,40 @@ const InventoryItem = require('../modal/InventoryItem');
 
 
 
+/**
+ * Adds stock to a specific product in a warehouse.
+ * @param {String} warehouseId - The ID of the warehouse.
+ * @param {String} productId - The ID of the product.
+ * @param {Number} quantity - The quantity to add.
+ */
 async function addStock(warehouseId, productId, quantity) {
+  // Validate input parameters
+  if (!warehouseId || !productId || typeof quantity !== 'number' || quantity <= 0) {
+    throw new Error('Invalid input parameters for adding stock.');
+  }
+
+  // Find the inventory item by warehouseId and productId
   let inventoryItem = await InventoryItem.findOne({
-    warehouse: warehouseId,
-    product: productId,
+    warehouseId: warehouseId,
+    productId: productId,
   });
 
   if (inventoryItem) {
     // Update existing inventory item
-    warehouseId: warehouseId,
-    productId: product.productId,
     inventoryItem.stockQuantity += quantity;
     inventoryItem.lastUpdated = Date.now();
   } else {
     // Create a new inventory item
     inventoryItem = new InventoryItem({
-      warehouse: warehouseId,
-      product: productId,
+      warehouseId: warehouseId,
+      productId: productId,
       stockQuantity: quantity,
     });
   }
 
+  // Save the inventory item
   await inventoryItem.save();
-};
+}
 
 
 async function decreaseStock(warehouseId, productId, quantitySold) {
