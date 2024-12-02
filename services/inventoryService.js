@@ -191,7 +191,6 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
         upsert: true,
       }
     }));
-
     // Execute bulk operations
     const bulkWriteResult = await InventoryItem.bulkWrite(bulkOps, { session });
 
@@ -200,7 +199,6 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       warehouseId, 
       productId: { $in: productIds } 
     }).session(session);
-
     await session.commitTransaction();
     session.endSession();
 
