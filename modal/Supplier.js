@@ -1,7 +1,7 @@
 // models/Supplier.js
 
 const mongoose = require('mongoose');
-const Product = require('./Product'); // Ensure the Product model is imported for validation
+const Product = require('./product'); 
 
 // Sub-schemas for modularity and reusability
 
@@ -11,7 +11,7 @@ const contactInfoSchema = new mongoose.Schema(
     phone: { type: String },
     email: { type: String },
     address: { type: String },
-    website: { type: String }, // Supplier's website
+    website: { type: String },
     socialMedia: {
       facebook: { type: String },
       twitter: { type: String },
@@ -26,8 +26,8 @@ const contactInfoSchema = new mongoose.Schema(
 // Product Reference Sub-schema using productId
 const productReferenceSchema = new mongoose.Schema(
   {
-    productId: { type: String, required: true, trim: true }, // Reference by productId string
-    suppliedQuantity: { type: Number, default: 0, min: [0, 'Supplied quantity cannot be negative'] }, // Quantity supplied by this supplier
+    productId: { type: String, required: true, trim: true },
+    suppliedQuantity: { type: Number, default: 0, min: [0, 'Supplied quantity cannot be negative'] },
     leadTime: { type: String }, // e.g., "2-5 business days"
   },
   { _id: false }
@@ -37,7 +37,7 @@ const productReferenceSchema = new mongoose.Schema(
 const certificationSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    authority: { type: String }, // Issuing authority
+    authority: { type: String },
     dateObtained: { type: Date },
     validUntil: { type: Date },
   },
