@@ -4,11 +4,11 @@ const InventoryItemSchema = new mongoose.Schema(
   {
     warehouseId: {
       type: String,
-      required: false,
+      required: [true, 'Warehouse ID is required'],
     },
     productId: {
       type: String,
-      required: false,
+      required: [true, 'Product ID is required'],
     },
     stockQuantity: {
       type: Number,
@@ -28,6 +28,7 @@ const InventoryItemSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-
+// Create a compound unique index to prevent duplicate entries for the same product in the same warehouse
+InventoryItemSchema.index({ warehouseId: 1, productId: 1 }, { unique: true });
 
 module.exports = mongoose.model('InventoryItem', InventoryItemSchema);
