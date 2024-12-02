@@ -156,10 +156,6 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
 
 
 
-/**
- * Adds multiple products to a warehouse with respective quantities.
- * Ensures no duplicates for already existing productId in the inventory.
- */
 async function addMultipleProductsToWarehouse(warehouseId, products) { 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -174,50 +170,41 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
     }
     console.log(`Warehouse found: ${warehouseId}`);
 
-    const inventoryItems = [];
-
-    for (const { productId, quantity } of products) {
-      console.log(`Processing Product ID: ${productId} with Quantity: ${quantity}`);
-
-      // Find the product by productId
-      const product = await Product.findOne({ productId }).session(session);
-      if (!product) {
-        throw new Error(`Product not found: ${productId}`);
-      }
-
-      // Log the productId for debugging
-      console.log(`Product found: ${productId}`);
-
-      // Check if InventoryItem exists for the warehouseId and productId
-      let inventoryItem = await InventoryItem.findOne({
-        warehouseId: warehouseId,
-        productId: productId,
-      }).session(session);
-
-      if (inventoryItem) {
-        // Update existing InventoryItem
-        inventoryItem.stockQuantity += quantity;
-        inventoryItem.lastUpdated = Date.now();
-        await inventoryItem.save({ session });
-        console.log(`Updated InventoryItem for Product ID: ${productId}`);
-      } else {
-        // Create new InventoryItem
-        inventoryItem = new InventoryItem({
-          warehouseId: warehouseId, // String identifier
-          productId: productId,     // String identifier
-          stockQuantity: quantity,
-        });
-        await inventoryItem.save({ session });
-        console.log(`Created new InventoryItem for Product ID: ${productId}`);
-      }
-
-      inventoryItems.push(inventoryItem);
+    // Validate all products exist
+    const productIds = products.map(p => p.productId);
+    const existingProducts = await Product.find({ productId: { $in: productIds } }).session(session);
+    const existingProductIds = existingProducts.map(p => p.productId);
+    
+    const missingProducts = productIds.filter(pid => !existingProductIds.includes(pid));
+    if (missingProducts.length > 0) {
+      throw new Error(`Products not found: ${missingProducts.join(', ')}`);
     }
+
+    // Prepare bulk operations
+    const bulkOps = products.map(({ productId, quantity }) => ({
+      updateOne: {
+        filter: { warehouseId, productId },
+        update: { 
+          $inc: { stockQuantity: quantity }, 
+          $set: { lastUpdated: Date.now() } 
+        },
+        upsert: true,
+      }
+    }));
+
+    // Execute bulk operations
+    const bulkWriteResult = await InventoryItem.bulkWrite(bulkOps, { session });
+
+    // Fetch the updated/created inventory items
+    const inventoryItems = await InventoryItem.find({ 
+      warehouseId, 
+      productId: { $in: productIds } 
+    }).session(session);
 
     await session.commitTransaction();
     session.endSession();
 
-    console.log(`Successfully added multiple products to Warehouse ID: ${warehouseId}`);
+    console.log(`Successfully added/updated multiple products to Warehouse ID: ${warehouseId}`);
 
     return inventoryItems;
   } catch (error) {
