@@ -61,4 +61,24 @@ router.patch('/:warehouseId/inventory/:inventoryId/adjust', inventoryController.
 router.post('/products/multiple/:warehouseId', inventoryController.addMultipleProductsToWarehouse);
 
 
+
+
+/**
+ * @route   POST /warehouses/:warehouseId/link-supplier/:supplierId
+ * @desc    Link a supplier to a warehouse
+ * @access  Public (Update as per your authentication strategy)
+ */
+router.post('/:warehouseId/link-supplier/:supplierId', async (req, res) => {
+  try {
+    const warehouse = await WarehouseController.linkSupplierToWarehouse(
+      req.params.warehouseId,
+      req.params.supplierId
+    );
+    res.status(200).json({ message: 'Supplier linked to warehouse successfully.', warehouse });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+
 module.exports = router;
