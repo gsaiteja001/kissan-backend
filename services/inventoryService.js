@@ -197,18 +197,16 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       throw new Error(`Products not found: ${missingProducts.join(', ')}`);
     }
 
-    // Prepare bulk operations with $setOnInsert for warehouseId and productId
+    // Prepare bulk operations with $set to ensure required fields are set
     const bulkOps = products.map(({ productId, quantity }) => ({
       updateOne: {
         filter: { warehouseId, productId },
         update: { 
           $inc: { stockQuantity: quantity }, 
-          $set: { lastUpdated: Date.now() },
-          $setOnInsert: { 
-            warehouseId, 
-            productId,
-            // Optionally, set reorderLevel if needed. If not, it will use the default from the schema.
-            // reorderLevel: 10
+          $set: { 
+            lastUpdated: new Date(),
+            warehouseId,    // Ensure warehouseId is set
+            productId       // Ensure productId is set
           }
         },
         upsert: true,
