@@ -165,8 +165,14 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
 }
 
 
-
-
+/**
+ * Adds multiple products to a warehouse with respective quantities.
+ * Ensures no duplicates for already existing productId in the inventory.
+ * 
+ * @param {String} warehouseId - The ID of the warehouse.
+ * @param {Array} products - An array of products with productId and quantity.
+ * @returns {Array} - An array of updated or created inventory items.
+ */
 async function addMultipleProductsToWarehouse(warehouseId, products) { 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -191,17 +197,24 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       throw new Error(`Products not found: ${missingProducts.join(', ')}`);
     }
 
-    // Prepare bulk operations
+    // Prepare bulk operations with $setOnInsert for warehouseId and productId
     const bulkOps = products.map(({ productId, quantity }) => ({
       updateOne: {
         filter: { warehouseId, productId },
         update: { 
           $inc: { stockQuantity: quantity }, 
-          $set: { lastUpdated: Date.now() } 
+          $set: { lastUpdated: Date.now() },
+          $setOnInsert: { 
+            warehouseId, 
+            productId,
+            // Optionally, set reorderLevel if needed. If not, it will use the default from the schema.
+            // reorderLevel: 10
+          }
         },
         upsert: true,
       }
     }));
+
     // Execute bulk operations
     const bulkWriteResult = await InventoryItem.bulkWrite(bulkOps, { session });
 
@@ -210,6 +223,7 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       warehouseId, 
       productId: { $in: productIds } 
     }).session(session);
+
     await session.commitTransaction();
     session.endSession();
 
@@ -223,7 +237,6 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
     throw error;
   }
 }
-
 
 
 
