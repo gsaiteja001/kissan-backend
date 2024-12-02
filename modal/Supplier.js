@@ -210,7 +210,15 @@ supplierSchema.pre('save', async function (next) {
   }
 });
 
-// Optional: Method to add a product to productsSupplied
+
+
+
+/**
+ * Add a single product to productsSupplied
+ * @param {String} productId - The unique identifier of the product
+ * @param {Number} suppliedQuantity - Quantity supplied
+ * @param {String} leadTime - Lead time for the product
+ */
 supplierSchema.methods.addProduct = async function (productId, suppliedQuantity, leadTime) {
   // Check if the product exists
   const productExists = await Product.exists({ productId });
@@ -232,10 +240,21 @@ supplierSchema.methods.addProduct = async function (productId, suppliedQuantity,
   await this.save();
 };
 
-// Optional: Method to remove a product from productsSupplied
+
+
+/**
+ * Remove a single product from productsSupplied
+ * @param {String} productId - The unique identifier of the product
+ */
 supplierSchema.methods.removeProduct = async function (productId) {
+  const initialLength = this.productsSupplied.length;
   this.productsSupplied = this.productsSupplied.filter((p) => p.productId !== productId);
+  if (this.productsSupplied.length === initialLength) {
+    throw new Error(`Product with productId ${productId} not found in supplier's products.`);
+  }
   await this.save();
 };
+
+
 
 module.exports = mongoose.model('Supplier', supplierSchema);
