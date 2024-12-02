@@ -111,6 +111,7 @@ const inventorySubSchema = new mongoose.Schema(
 // Supplier Schema
 const supplierSchema = new mongoose.Schema(
   {
+    supplierId: name: { type: String, required: true },
     name: { type: String, required: true },
     contactInfo: contactInfoSchema,
 
