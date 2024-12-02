@@ -1,4 +1,4 @@
-// models/LocalizedString.js
+// modal/LocalizedString.js
 
 const mongoose = require('mongoose');
 
