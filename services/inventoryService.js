@@ -140,9 +140,7 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
   } else {
     // Create a new inventory item
     inventoryItem = new InventoryItem({
-      warehouse: warehouse._id, // Retain ObjectId for relations
       warehouseId: warehouseId, // Use warehouseId for queries
-      product: product._id, // Retain ObjectId for relations
       productId: product.productId, // Use productId for queries
       stockQuantity: quantity,
     });
