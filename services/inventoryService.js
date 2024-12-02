@@ -158,15 +158,16 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
 
 /**
  * Adds multiple products to a warehouse with respective quantities.
- * Ensures no duplicates are created for already existing productId in the inventory.
+ * Ensures no duplicates for already existing productId in the inventory.
  */
-async function addMultipleProductsToWarehouse(warehouseId, products) {
+async function addMultipleProductsToWarehouse(warehouseId, products) { 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     console.log(`Adding multiple products to Warehouse ID: ${warehouseId}`);
 
+    // Find the warehouse by warehouseId
     const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
     if (!warehouse) {
       throw new Error('Warehouse not found.');
@@ -177,12 +178,16 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
     for (const { productId, quantity } of products) {
       console.log(`Processing Product ID: ${productId} with Quantity: ${quantity}`);
 
+      // Find the product by productId
       const product = await Product.findOne({ productId }).session(session);
       if (!product) {
         throw new Error(`Product not found: ${productId}`);
       }
 
-      // Check if InventoryItem exists
+      // Log the ObjectId and productId for debugging
+      console.log(`Product found: ${productId}, ObjectId: ${product._id}`);
+
+      // Check if InventoryItem exists for the warehouseId and productId
       let inventoryItem = await InventoryItem.findOne({
         warehouseId: warehouseId,
         productId: productId,
@@ -197,10 +202,10 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       } else {
         // Create new InventoryItem
         inventoryItem = new InventoryItem({
-          warehouse: warehouse._id, // Store ObjectId for reference
-          warehouseId: warehouseId, // Store warehouseId for querying
-          product: product._id, // Store ObjectId for reference
-          productId: productId, // Store productId for querying
+          warehouse: warehouse._id, // Assign ObjectId reference
+          warehouseId: warehouseId, // String identifier
+          product: product._id, // Assign ObjectId reference
+          productId: productId, // String identifier
           stockQuantity: quantity,
         });
         await inventoryItem.save({ session });
