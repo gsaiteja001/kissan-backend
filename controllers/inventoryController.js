@@ -61,7 +61,7 @@ exports.getAllWarehousesWithInventory = async (req, res) => {
 
 /**
  * @desc    Add multiple existing products to a warehouse with respective quantities
- * @route   POST /api/inventory/warehouses/:warehouseId/products/multiple
+ * @route   POST /api/warehouses/products/multiple/:warehouseId
  * @access  Public (Adjust access as needed)
  */
 exports.addMultipleProductsToWarehouse = async (req, res) => {
@@ -75,7 +75,7 @@ exports.addMultipleProductsToWarehouse = async (req, res) => {
 
     // Validate each product entry
     for (const product of products) {
-      if (!product.productId || !product.quantity) {
+      if (!product.productId || product.quantity == null) { // Allow quantity 0 if needed
         return res.status(400).json({ message: 'Each product must have a productId and quantity.' });
       }
       if (typeof product.quantity !== 'number' || product.quantity <= 0) {
