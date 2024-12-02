@@ -4,11 +4,11 @@ const InventoryItemSchema = new mongoose.Schema(
   {
     warehouseId: {
       type: String,
-      required: true,
+      required: false,
     },
     productId: {
       type: String,
-      required: true,
+      required: false,
     },
     stockQuantity: {
       type: Number,
