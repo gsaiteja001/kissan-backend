@@ -100,6 +100,60 @@ const updateWarehouseOccupancy = async (warehouseId) => {
   }
 };
 
+// Add Product to Warehouse
+async function addProductToWarehouse(warehouseId, productData, quantity) {
+  if (!warehouseId) {
+    throw new Error('Warehouse ID is required.');
+  }
+
+  const warehouse = await Warehouse.findOne({ warehouseId });
+  if (!warehouse) {
+    throw new Error('Warehouse not found.');
+  }
+
+  let product;
+
+  if (productData.productId) {
+    // Attempt to find existing product
+    product = await Product.findOne({ productId: productData.productId });
+    if (!product) {
+      // Create a new product since it doesn't exist
+      product = new Product(productData);
+      await product.save();
+    }
+  } else {
+    // Create a new product without a specified productId
+    product = new Product(productData);
+    await product.save();
+  }
+
+  // Find or create inventory item using warehouseId and productId
+  let inventoryItem = await InventoryItem.findOne({
+    warehouseId: warehouseId,
+    productId: product.productId,
+  });
+
+  if (inventoryItem) {
+    // Update existing inventory item
+    inventoryItem.stockQuantity += quantity;
+    inventoryItem.lastUpdated = Date.now();
+  } else {
+    // Create a new inventory item
+    inventoryItem = new InventoryItem({
+      warehouse: warehouse._id, // Retain ObjectId for relations
+      warehouseId: warehouseId, // Use warehouseId for queries
+      product: product._id, // Retain ObjectId for relations
+      productId: product.productId, // Use productId for queries
+      stockQuantity: quantity,
+    });
+  }
+
+  await inventoryItem.save();
+
+  return inventoryItem;
+}
+
+
 
 
 /**
