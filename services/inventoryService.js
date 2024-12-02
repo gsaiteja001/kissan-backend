@@ -170,6 +170,7 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
     if (!warehouse) {
       throw new Error('Warehouse not found.');
     }
+    console.log(`Warehouse found: ${warehouseId}`);
 
     const inventoryItems = [];
 
@@ -182,8 +183,8 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
         throw new Error(`Product not found: ${productId}`);
       }
 
-      // Log the ObjectId and productId for debugging
-      console.log(`Product found: ${productId}, ObjectId: ${product._id}`);
+      // Log the productId for debugging
+      console.log(`Product found: ${productId}`);
 
       // Check if InventoryItem exists for the warehouseId and productId
       let inventoryItem = await InventoryItem.findOne({
@@ -201,7 +202,7 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
         // Create new InventoryItem
         inventoryItem = new InventoryItem({
           warehouseId: warehouseId, // String identifier
-          productId: productId, // String identifier
+          productId: productId,     // String identifier
           stockQuantity: quantity,
         });
         await inventoryItem.save({ session });
