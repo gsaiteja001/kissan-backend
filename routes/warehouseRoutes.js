@@ -51,7 +51,7 @@ router.post('/:warehouseId/products', inventoryController.addProductToWarehouse)
 router.delete('/:warehouseId/products/:productId', inventoryController.removeProductFromWarehouse);
 
 // List Inventory Items for a Warehouse
-router.get('/:warehouseId/inventory', inventoryController.listInventoryItems);
+router.get('/inventory/products/:warehouseId', inventoryController.listInventoryItems);
 
 // Get All Warehouses with Inventory Items
 router.get('/inventory', inventoryController.getAllWarehousesWithInventory);
