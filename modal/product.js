@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 
+const InventoryItem = require('./InventoryItem');
+
 const ReviewSchema = new mongoose.Schema(
   {
     user: {
