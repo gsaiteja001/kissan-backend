@@ -474,3 +474,37 @@ exports.getWarehouseInventory = async (req, res, next) => {
     next(error);
   }
 };
+
+//------------------------------------------------------------- suppliers ---------------------------------------------------------------------------
+
+
+/**
+ * Link a supplier to a warehouse
+ * @param {String} warehouseId - The unique identifier of the warehouse
+ * @param {String} supplierId - The unique identifier of the supplier
+ * @returns {Object} - Updated warehouse document
+ */
+const linkSupplierToWarehouse = async (warehouseId, supplierId) => {
+  try {
+    const warehouse = await Warehouse.findOne({ warehouseId });
+    if (!warehouse) {
+      throw new Error(`Warehouse with warehouseId ${warehouseId} not found.`);
+    }
+
+    const supplier = await Supplier.findOne({ supplierId });
+    if (!supplier) {
+      throw new Error(`Supplier with supplierId ${supplierId} not found.`);
+    }
+
+    // Avoid duplicate entries
+    if (!warehouse.linkedSuppliers.includes(supplier._id)) {
+      warehouse.linkedSuppliers.push(supplier._id);
+      await warehouse.save();
+    }
+
+    return warehouse;
+  } catch (error) {
+    throw new Error(`Error linking supplier to warehouse: ${error.message}`);
+  }
+};
+
