@@ -1,7 +1,7 @@
 // controllers/SupplierController.js
 
 const Supplier = require('../modal/Supplier');
-const Product = require('../modal/Product'); 
+const Product = require('../modal/product'); 
 
 /**
  * Add a new supplier
