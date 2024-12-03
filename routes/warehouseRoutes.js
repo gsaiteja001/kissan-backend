@@ -10,6 +10,7 @@ const {
   updateInventoryItem,
   deleteInventoryItem,
   getWarehouseInventory,
+  linkSupplierToWarehouse,
 } = require('../controllers/warehouseController');
 
 const inventoryController = require('../controllers/inventoryController');
@@ -70,7 +71,7 @@ router.post('/products/multiple/:warehouseId', inventoryController.addMultiplePr
  */
 router.post('/:warehouseId/link-supplier/:supplierId', async (req, res) => {
   try {
-    const warehouse = await WarehouseController.linkSupplierToWarehouse(
+    const warehouse = await linkSupplierToWarehouse(
       req.params.warehouseId,
       req.params.supplierId
     );
