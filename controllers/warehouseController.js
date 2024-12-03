@@ -9,6 +9,8 @@ const Supplier = require('../modal/Supplier');
 const Farmer = require('../modal/farmers');    
 const Order = require('../modal/order'); 
 
+const StockTransaction = require('../modal/StockTransaction');
+
 /**
  * @desc    Create a new warehouse with optional staff members
  * @route   POST /api/warehouses
