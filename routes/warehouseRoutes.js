@@ -146,14 +146,30 @@ router.post(
 );
 
 
+
 router.get('/transactions', async (req, res) => {
+  const { warehouseId } = req.query;
+
+  // Validate that warehouseId is provided
+  if (!warehouseId) {
+    return res.status(400).json({ message: 'warehouseId query parameter is required' });
+  }
+
   try {
-    const transactions = await StockTransaction.find()
+    // Fetch transactions matching the warehouseId
+    const transactions = await StockTransaction.find({ warehouseId })
       .sort({ timestamp: -1 })
-      .populate('relatedTransaction');
+      .populate('relatedTransaction'); 
+
+    // If no transactions found, return a 404
+    if (transactions.length === 0) {
+      return res.status(404).json({ message: 'No transactions found for the provided warehouseId' });
+    }
+
     res.json(transactions);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Error fetching transactions:', err);
+    res.status(500).json({ message: 'Server error while fetching transactions' });
   }
 });
 
