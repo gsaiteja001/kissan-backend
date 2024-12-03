@@ -75,7 +75,7 @@ const supplierRoutes = require('./routes/suppliers');
 app.use('/suppliers', supplierRoutes);
 
 const SupplierRouter = require('./services/SupplierServices');
-app.use('/api/services', SupplierRouter);
+app.use('/api/suppliers', SupplierRouter);
 
 
 
