@@ -1,4 +1,4 @@
-const Supplier = require('./modal/Supplier');
+const Supplier = require('../modal/Supplier');
 async function addProductToSupplier(supplierId, productId, suppliedQuantity, leadTime) {
   try {
     const supplier = await Supplier.findById(supplierId);
