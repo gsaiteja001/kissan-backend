@@ -11,11 +11,60 @@ const {
   deleteInventoryItem,
   getWarehouseInventory,
   linkSupplierToWarehouse,
+  stockIn,
+  stockOut,
+  adjustStock,
+  moveStock,
 } = require('../controllers/warehouseController');
 
 const inventoryController = require('../controllers/inventoryController');
 
 const router = express.Router();
+
+const { body, validationResult } = require('express-validator');
+
+// Middleware for validating stock transaction inputs
+const validateAdjustStock = [
+  body('warehouseId').notEmpty().withMessage('warehouseId is required.'),
+  body('products').isArray({ min: 1 }).withMessage('At least one product must be provided.'),
+  body('products.*.productId').notEmpty().withMessage('productId is required for each product.'),
+  body('products.*.newQuantity').isFloat({ min: 0 }).withMessage('newQuantity must be a non-negative number for each product.'),
+];
+
+const validateMoveStock = [
+  body('sourceWarehouseId').notEmpty().withMessage('sourceWarehouseId is required.'),
+  body('destinationWarehouseId').notEmpty().withMessage('destinationWarehouseId is required.'),
+  body('products').isArray({ min: 1 }).withMessage('At least one product must be provided.'),
+  body('products.*.productId').notEmpty().withMessage('productId is required for each product.'),
+  body('products.*.quantity').isFloat({ gt: 0 }).withMessage('quantity must be greater than 0 for each product.'),
+  // Add more validations as needed
+];
+
+// Adjust Stock Route
+router.post(
+  '/adjust-stock',
+  validateAdjustStock,
+  async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    adjustStock(req, res, next);
+  }
+);
+
+// Move Stock Route
+router.post(
+  '/move-stock',
+  validateMoveStock,
+  async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    moveStock(req, res, next);
+  }
+);
 
 // Create a new warehouse
 router.post('/create', createWarehouse);
