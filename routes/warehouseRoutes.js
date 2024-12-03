@@ -19,6 +19,8 @@ const {
 
 const inventoryController = require('../controllers/inventoryController');
 
+const StockTransaction = require('../modal/StockTransaction'); 
+
 const router = express.Router();
 
 const { body, validationResult } = require('express-validator');
@@ -142,6 +144,20 @@ router.post(
     stockOut(req, res, next);
   }
 );
+
+
+router.get('/transactions', async (req, res) => {
+  try {
+    const transactions = await StockTransaction.find()
+      .sort({ timestamp: -1 })
+      .populate('relatedTransaction');
+    res.json(transactions);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
 
 // Create a new warehouse
 router.post('/create', createWarehouse);
