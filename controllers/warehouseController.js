@@ -389,6 +389,174 @@ exports.updateInventoryItem = async (req, res, next) => {
   }
 };
 
+
+/**
+ * Stock In function
+ * Adds stock to specific products in a warehouse
+ */
+exports.stockIn = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { warehouseId, products, performedBy, notes } = req.body;
+
+    // Validate input
+    if (!warehouseId || !products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ error: 'warehouseId and at least one product are required.' });
+    }
+
+    // Find the Warehouse
+    const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
+    if (!warehouse) {
+      throw new Error('Warehouse not found.');
+    }
+
+    // Iterate over each product in the transaction
+    for (const prod of products) {
+      const { productId, quantity, unit } = prod;
+
+      if (!productId || quantity === undefined) {
+        throw new Error('Each product must have a productId and quantity.');
+      }
+
+      // Find the Product
+      const product = await Product.findOne({ productId }).session(session);
+      if (!product) {
+        throw new Error(`Product with productId ${productId} not found.`);
+      }
+
+      // Find or Create the InventoryItem
+      let inventoryItem = await InventoryItem.findOne({ warehouseId, productId }).session(session);
+      if (!inventoryItem) {
+        inventoryItem = new InventoryItem({ warehouseId, productId, stockQuantity: 0, reorderLevel: 10 });
+      }
+
+      // Update the InventoryItem
+      inventoryItem.stockQuantity += quantity;
+      inventoryItem.lastUpdated = new Date();
+      await inventoryItem.save({ session });
+
+      // Update the Product's total stock
+      await product.updateTotalStock();
+    }
+
+    // Create a StockTransaction
+    const stockTransaction = new StockTransaction({
+      transactionType: 'stockIn',
+      warehouseId,
+      products,
+      performedBy: performedBy || 'System', // Replace with actual user if available
+      notes: notes || '',
+    });
+    await stockTransaction.save({ session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({
+      message: 'Stock added successfully.',
+      stockTransaction,
+    });
+  } catch (error) {
+    // Abort the transaction on error
+    await session.abortTransaction();
+    session.endSession();
+
+    console.error('Error in stockIn:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+/**
+ * Stock Out function
+ * Removes stock from specific products in a warehouse
+ */
+exports.stockOut = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { warehouseId, products, performedBy, notes } = req.body;
+
+    // Validate input
+    if (!warehouseId || !products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ error: 'warehouseId and at least one product are required.' });
+    }
+
+    // Find the Warehouse
+    const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
+    if (!warehouse) {
+      throw new Error('Warehouse not found.');
+    }
+
+    // Iterate over each product in the transaction
+    for (const prod of products) {
+      const { productId, quantity, unit } = prod;
+
+      if (!productId || quantity === undefined) {
+        throw new Error('Each product must have a productId and quantity.');
+      }
+
+      // Find the Product
+      const product = await Product.findOne({ productId }).session(session);
+      if (!product) {
+        throw new Error(`Product with productId ${productId} not found.`);
+      }
+
+      // Find the InventoryItem
+      let inventoryItem = await InventoryItem.findOne({ warehouseId, productId }).session(session);
+      if (!inventoryItem) {
+        throw new Error(`Inventory item for productId ${productId} not found in warehouse ${warehouseId}.`);
+      }
+
+      // Check if sufficient stock exists
+      if (inventoryItem.stockQuantity < quantity) {
+        throw new Error(`Insufficient stock for productId ${productId}. Available: ${inventoryItem.stockQuantity}, Requested: ${quantity}`);
+      }
+
+      // Update the InventoryItem
+      inventoryItem.stockQuantity -= quantity;
+      inventoryItem.lastUpdated = new Date();
+      await inventoryItem.save({ session });
+
+      // Update the Product's total stock
+      await product.updateTotalStock();
+    }
+
+    // Create a StockTransaction
+    const stockTransaction = new StockTransaction({
+      transactionType: 'stockOut',
+      warehouseId,
+      products,
+      performedBy: performedBy || 'System',
+      notes: notes || '',
+    });
+    await stockTransaction.save({ session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({
+      message: 'Stock removed successfully.',
+      stockTransaction,
+    });
+  } catch (error) {
+    // Abort the transaction on error
+    await session.abortTransaction();
+    session.endSession();
+
+    console.error('Error in stockOut:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
 /**
  * @desc    Remove (soft delete) inventory item from a warehouse
  * @route   DELETE /api/warehouses/:id/inventory/:inventoryId
