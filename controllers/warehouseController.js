@@ -192,8 +192,8 @@ exports.getAllWarehouses = async (req, res, next) => {
  */
 exports.getWarehouseById = async (req, res, next) => {
   try {
-    const { warehouseId } = req.params;
-    const warehouse = await Warehouse.findOne({ warehouseId })
+    const { id } = req.params; // Changed from warehouseId to id
+    const warehouse = await Warehouse.findOne({ warehouseId: id })
       .populate('linkedSuppliers', 'name contactInfo')
       .populate({
         path: 'inventoryItems',
