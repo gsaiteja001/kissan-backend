@@ -190,9 +190,9 @@ exports.getAllWarehouses = async (req, res, next) => {
  */
 exports.getWarehouseById = async (req, res, next) => {
   try {
-    const warehouse = await Warehouse.findById(req.params.id)
+    const { warehouseId } = req.params;
+    const warehouse = await Warehouse.findOne({ warehouseId })
       .populate('linkedSuppliers', 'name contactInfo')
-      // .populate('linkedOrders', 'orderNumber status totalAmount')
       .populate({
         path: 'inventoryItems',
         populate: { path: 'product', select: 'name category price' },
@@ -222,8 +222,9 @@ exports.getWarehouseById = async (req, res, next) => {
  */
 exports.updateWarehouse = async (req, res, next) => {
   try {
-    const updatedWarehouse = await Warehouse.findByIdAndUpdate(
-      req.params.id,
+    const { warehouseId } = req.params;
+    const updatedWarehouse = await Warehouse.findOneAndUpdate(
+      { warehouseId },
       req.body,
       { new: true, runValidators: true }
     );
@@ -247,6 +248,7 @@ exports.updateWarehouse = async (req, res, next) => {
     next(error);
   }
 };
+
 
 /**
  * @desc    Soft delete a warehouse by ID
@@ -283,11 +285,11 @@ exports.deleteWarehouse = async (req, res, next) => {
  */
 exports.addInventoryItem = async (req, res, next) => {
   try {
-    const warehouseId = req.params.id;
+    const { warehouseId } = req.params;
     const { productId, stockQuantity, reorderLevel, storageLocation } = req.body;
 
     // Validate Warehouse
-    const warehouse = await Warehouse.findById(warehouseId);
+    const warehouse = await Warehouse.findOne({ warehouseId });
     if (!warehouse) {
       return res.status(404).json({
         success: false,
@@ -296,7 +298,7 @@ exports.addInventoryItem = async (req, res, next) => {
     }
 
     // Validate Product
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({ productId });
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -306,8 +308,8 @@ exports.addInventoryItem = async (req, res, next) => {
 
     // Check if InventoryItem already exists
     let inventoryItem = await InventoryItem.findOne({
-      warehouse: warehouseId,
-      product: productId,
+      warehouse: warehouse._id,
+      product: product._id,
     });
 
     if (inventoryItem) {
@@ -319,8 +321,8 @@ exports.addInventoryItem = async (req, res, next) => {
 
     // Create new InventoryItem
     inventoryItem = new InventoryItem({
-      warehouse: warehouseId,
-      product: productId,
+      warehouse: warehouse._id,
+      product: product._id,
       stockQuantity: stockQuantity || 0,
       reorderLevel: reorderLevel || 10,
       storageLocation: storageLocation || {},
@@ -438,11 +440,11 @@ exports.deleteInventoryItem = async (req, res, next) => {
  */
 exports.getWarehouseInventory = async (req, res, next) => {
   try {
-    const warehouseId = req.params.id;
+    const { warehouseId } = req.params;
     const { category, productName } = req.query;
 
     // Validate Warehouse
-    const warehouse = await Warehouse.findById(warehouseId);
+    const warehouse = await Warehouse.findOne({ warehouseId });
     if (!warehouse) {
       return res.status(404).json({
         success: false,
@@ -451,7 +453,7 @@ exports.getWarehouseInventory = async (req, res, next) => {
     }
 
     // Build query
-    const query = { warehouse: warehouseId };
+    const query = { warehouse: warehouse._id };
 
     if (category) {
       query['product.category'] = category;
