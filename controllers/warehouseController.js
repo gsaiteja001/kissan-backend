@@ -484,13 +484,15 @@ exports.getWarehouseInventory = async (req, res, next) => {
  * @param {String} supplierId - The unique identifier of the supplier
  * @returns {Object} - Updated warehouse document
  */
-exports.linkSupplierToWarehouse = async (req, res, next) => {
+exports.linkSupplierToWarehouse = async (warehouseId, supplierId) => {
   try {
+    // Find the warehouse by warehouseId
     const warehouse = await Warehouse.findOne({ warehouseId });
     if (!warehouse) {
       throw new Error(`Warehouse with warehouseId ${warehouseId} not found.`);
     }
 
+    // Find the supplier by supplierId
     const supplier = await Supplier.findOne({ supplierId });
     if (!supplier) {
       throw new Error(`Supplier with supplierId ${supplierId} not found.`);
