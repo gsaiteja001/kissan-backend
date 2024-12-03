@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
@@ -44,10 +43,9 @@ const stockTransactionSchema = new mongoose.Schema(
     },
     products: [productTransactionSchema], // Array of products involved in the transaction
     relatedTransaction: { // For transactions like moveStock that might relate to another transaction
-      type: String, // Changed from ObjectId to String (assuming UUIDv4)
+      type: mongoose.Schema.Types.ObjectId, // Changed to ObjectId
       ref: 'StockTransaction',
       required: false,
-      trim: true,
     },
     performedBy: {
       type: String, // Can be a reference to a User model if you have authentication
