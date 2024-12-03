@@ -40,6 +40,54 @@ const validateMoveStock = [
   // Add more validations as needed
 ];
 
+// Middleware for validating stockIn transaction inputs
+const validateStockIn = [
+  body('warehouseId')
+    .notEmpty()
+    .withMessage('warehouseId is required.')
+    .isString()
+    .withMessage('warehouseId must be a string.'),
+  body('products')
+    .isArray({ min: 1 })
+    .withMessage('At least one product must be provided.'),
+  body('products.*.productId')
+    .notEmpty()
+    .withMessage('productId is required for each product.')
+    .isString()
+    .withMessage('productId must be a string.'),
+  body('products.*.quantity')
+    .isFloat({ gt: 0 })
+    .withMessage('quantity must be greater than 0 for each product.'),
+  body('products.*.unit')
+    .optional()
+    .isString()
+    .withMessage('unit must be a string if provided.'),
+];
+
+// Middleware for validating stockOut transaction inputs
+const validateStockOut = [
+  body('warehouseId')
+    .notEmpty()
+    .withMessage('warehouseId is required.')
+    .isString()
+    .withMessage('warehouseId must be a string.'),
+  body('products')
+    .isArray({ min: 1 })
+    .withMessage('At least one product must be provided.'),
+  body('products.*.productId')
+    .notEmpty()
+    .withMessage('productId is required for each product.')
+    .isString()
+    .withMessage('productId must be a string.'),
+  body('products.*.quantity')
+    .isFloat({ gt: 0 })
+    .withMessage('quantity must be greater than 0 for each product.'),
+  body('products.*.unit')
+    .optional()
+    .isString()
+    .withMessage('unit must be a string if provided.'),
+];
+
 // Adjust Stock Route
 router.post(
   '/adjust-stock',
@@ -63,6 +111,35 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
     moveStock(req, res, next);
+  }
+);
+
+
+// **New Route: Stock In**
+// Handles adding stock to products in a warehouse
+router.post(
+  '/stock-in',
+  validateStockIn,
+  async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    stockIn(req, res, next);
+  }
+);
+
+// **New Route: Stock Out**
+// Handles removing stock from products in a warehouse
+router.post(
+  '/stock-out',
+  validateStockOut,
+  async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    stockOut(req, res, next);
   }
 );
 
