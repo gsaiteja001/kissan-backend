@@ -28,17 +28,27 @@ exports.createPurchase = async (req, res) => {
       paymentStatus,
       paymentDetails,
       notes,
-      stockTransaction, // _id from stockIn response
+      stockTransaction, // transactionId from stockIn response
     } = req.body;
 
     // Basic validation
-    if (!supplierId || !warehouseId || !products || !Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({ error: 'supplierId, warehouseId and at least one product are required.' });
+    if (
+      !supplierId ||
+      !warehouseId ||
+      !products ||
+      !Array.isArray(products) ||
+      products.length === 0
+    ) {
+      return res.status(400).json({
+        error: 'supplierId, warehouseId, and at least one product are required.',
+      });
     }
 
-    // Validate stockTransactionId
-    if (!stockTransaction || !mongoose.Types.ObjectId.isValid(stockTransaction)) {
-      return res.status(400).json({ error: 'Valid stockTransaction ID is required.' });
+    // Validate stockTransactionId (transactionId)
+    if (!stockTransaction || typeof stockTransaction !== 'string') {
+      return res.status(400).json({
+        error: 'Valid transactionId is required for stockTransaction.',
+      });
     }
 
     // Find the Supplier
@@ -53,24 +63,33 @@ exports.createPurchase = async (req, res) => {
       throw new Error('Warehouse not found.');
     }
 
-    // Find the StockTransaction
-    const stockTrans = await StockTransaction.findById(stockTransaction).session(session);
+    // Find the StockTransaction by transactionId
+    const stockTrans = await StockTransaction.findOne({
+      transactionId: stockTransaction,
+    }).session(session);
     if (!stockTrans) {
-      throw new Error('StockTransaction not found.');
+      throw new Error(
+        'StockTransaction with the provided transactionId not found.'
+      );
     }
 
-    // Prepare the products array
-    const purchaseProducts = products.map(item => ({
-      productId: item.id, // Assuming 'id' corresponds to 'productId'
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      totalPrice: item.totalPrice,
-      taxes: item.taxes,
-      transportCharges: item.allocatedTransportCharges,
-      otherCharges: item.allocatedOtherCharges,
-      totalCost: item.totalCost,
-      finalCutoffUnitPrice: item.finalCutoffUnitPrice,
-    }));
+    // Prepare the products array for Purchase
+    const purchaseProducts = products.map((item, index) => {
+      if (!item.productId) {
+        throw new Error(`products.${index}.productId is required.`);
+      }
+      return {
+        productId: item.productId, // Use 'productId' directly
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        taxes: item.taxes,
+        transportCharges: item.transportCharges,
+        otherCharges: item.otherCharges,
+        totalCost: item.totalCost,
+        finalCutoffUnitPrice: item.finalCutoffUnitPrice,
+      };
+    });
 
     // Create the Purchase document
     const purchase = new Purchase({
@@ -86,35 +105,47 @@ exports.createPurchase = async (req, res) => {
       paymentStatus,
       paymentDetails,
       notes,
-      stockTransaction, // Link to the StockTransaction
+      stockTransaction: stockTrans._id, // Reference by _id
     });
 
     await purchase.save({ session });
 
-    // Optionally, you might want to update the payment status or other related data
+    // Optionally, you might want to update related documents or perform additional operations here
 
     // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
+    // Populate the stockTransaction field with transactionId for response clarity
+    const populatedPurchase = await Purchase.findById(purchase._id)
+      .populate({
+        path: 'stockTransaction',
+        select: 'transactionId transactionType warehouseId',
+      })
+      .exec();
+
     res.status(201).json({
       message: 'Purchase recorded successfully.',
       purchase: {
-        purchaseId: purchase.purchaseId,
-        supplierId: purchase.supplierId,
-        warehouseId: purchase.warehouseId,
-        products: purchase.products,
-        totalQuantity: purchase.totalQuantity,
-        subTotal: purchase.subTotal,
-        totalTax: purchase.totalTax,
-        totalTransportCharges: purchase.totalTransportCharges,
-        totalOtherCharges: purchase.totalOtherCharges,
-        grandTotal: purchase.grandTotal,
-        paymentStatus: purchase.paymentStatus,
-        paymentDetails: purchase.paymentDetails,
-        notes: purchase.notes,
-        stockTransaction: purchase.stockTransaction,
-        purchaseDate: purchase.purchaseDate,
+        purchaseId: populatedPurchase.purchaseId,
+        supplierId: populatedPurchase.supplierId,
+        warehouseId: populatedPurchase.warehouseId,
+        products: populatedPurchase.products,
+        totalQuantity: populatedPurchase.totalQuantity,
+        subTotal: populatedPurchase.subTotal,
+        totalTax: populatedPurchase.totalTax,
+        totalTransportCharges: populatedPurchase.totalTransportCharges,
+        totalOtherCharges: populatedPurchase.totalOtherCharges,
+        grandTotal: populatedPurchase.grandTotal,
+        paymentStatus: populatedPurchase.paymentStatus,
+        paymentDetails: populatedPurchase.paymentDetails,
+        notes: populatedPurchase.notes,
+        stockTransaction: {
+          transactionId: populatedPurchase.stockTransaction.transactionId,
+          transactionType: populatedPurchase.stockTransaction.transactionType,
+          warehouseId: populatedPurchase.stockTransaction.warehouseId,
+        },
+        purchaseDate: populatedPurchase.purchaseDate,
         // Include other fields as necessary
       },
     });
