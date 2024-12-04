@@ -511,8 +511,7 @@ exports.stockIn = async (req, res, next) => {
       })),
       performedBy: performedBy || 'System', // Replace with actual user if available
       notes: notes || '',
-      relatedTransactionType: purchaseId ? 'Purchase' : undefined,
-      relatedTransaction: purchaseId ? purchase._id : undefined,
+      // Do NOT set relatedTransactionType or relatedTransaction for Purchase linkage
     });
     await stockInTransaction.save({ session });
 
@@ -536,9 +535,8 @@ exports.stockIn = async (req, res, next) => {
         products: stockInTransaction.products,
         performedBy: stockInTransaction.performedBy,
         notes: stockInTransaction.notes,
-        relatedTransactionType: stockInTransaction.relatedTransactionType,
-        relatedTransaction: stockInTransaction.relatedTransaction,
         timestamp: stockInTransaction.timestamp,
+        // Optionally exclude relatedTransactionType and relatedTransaction for Purchase linkage
       },
     });
   } catch (error) {
@@ -575,7 +573,7 @@ exports.stockOut = async (req, res, next) => {
 
     let salesTransaction = null;
     if (salesTransactionId) {
-      salesTransaction = await SalesTransaction.findOne({ salesTransactionId }).session(session);
+      salesTransaction = await SalesTransaction.findOne({ salesTransactionId: salesTransactionId }).session(session);
       if (!salesTransaction) {
         throw new Error('SalesTransaction not found.');
       }
@@ -630,8 +628,7 @@ exports.stockOut = async (req, res, next) => {
       })),
       performedBy: performedBy || 'System',
       notes: notes || '',
-      relatedTransactionType: salesTransactionId ? 'SalesTransaction' : undefined,
-      relatedTransaction: salesTransactionId ? salesTransaction._id : undefined,
+      // Do NOT set relatedTransactionType or relatedTransaction for SalesTransaction linkage
     });
     await stockOutTransaction.save({ session });
 
@@ -655,9 +652,8 @@ exports.stockOut = async (req, res, next) => {
         products: stockOutTransaction.products,
         performedBy: stockOutTransaction.performedBy,
         notes: stockOutTransaction.notes,
-        relatedTransactionType: stockOutTransaction.relatedTransactionType,
-        relatedTransaction: stockOutTransaction.relatedTransaction,
         timestamp: stockOutTransaction.timestamp,
+        // Optionally exclude relatedTransactionType and relatedTransaction for SalesTransaction linkage
       },
     });
   } catch (error) {
