@@ -75,7 +75,7 @@ const supplierRoutes = require('./routes/suppliers');
 app.use('/suppliers', supplierRoutes);
 
 const saleRoutes = require('./routes/saleRoutes');
-app.use('/api/sale/create', supplierRoutes);
+app.use('/api/sale/purchase-record/create', saleRoutes);
 
 
 
