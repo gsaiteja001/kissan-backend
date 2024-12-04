@@ -1,13 +1,14 @@
+// models/StockTransaction.js
+
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 // Define the types of transactions
 const TRANSACTION_TYPES = ['stockIn', 'stockOut', 'adjust', 'moveStock'];
 
-// Define the types of related transactions
-const RELATED_TRANSACTION_TYPES = ['StockTransaction', 'Purchase', 'SalesTransaction'];
+// Define the types of related transactions (only for internal use)
+const RELATED_TRANSACTION_TYPES = ['StockTransaction'];
 
-// Subschema for individual product transactions within a StockTransaction
 const productTransactionSchema = new mongoose.Schema({
   productId: {
     type: String,
@@ -21,8 +22,8 @@ const productTransactionSchema = new mongoose.Schema({
   },
   unit: {
     type: String,
-    default: 'kg', // Ensure consistency with InventoryItem
-    enum: ['kg', 'liters', 'units', 'packs', 'boxes', 'others'], // Add more units as needed
+    default: 'kg',
+    enum: ['kg', 'liters', 'units', 'packs', 'boxes', 'others'],
   },
 }, { _id: false });
 
@@ -33,6 +34,7 @@ const stockTransactionSchema = new mongoose.Schema(
       default: uuidv4, // Automatically generate UUIDv4
       unique: true,
       immutable: true,
+      index: true, // For faster querying
     },
     transactionType: {
       type: String,
@@ -44,7 +46,7 @@ const stockTransactionSchema = new mongoose.Schema(
       required: [true, 'Warehouse ID is required'],
       trim: true,
     },
-    products: [productTransactionSchema], // Array of products involved in the transaction
+    products: [productTransactionSchema],
     relatedTransactionType: {
       type: String,
       enum: RELATED_TRANSACTION_TYPES,
@@ -56,7 +58,7 @@ const stockTransactionSchema = new mongoose.Schema(
       required: false,
     },
     performedBy: {
-      type: String, // Can be a reference to a User model if you have authentication
+      type: String,
       required: false,
       trim: true,
     },
