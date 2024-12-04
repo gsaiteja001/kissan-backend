@@ -437,7 +437,6 @@ exports.updateInventoryItem = async (req, res, next) => {
     next(error);
   }
 };
-
 /**
  * Stock In function
  * Adds stock to specific products in a warehouse and links to a Purchase
@@ -476,6 +475,10 @@ exports.stockIn = async (req, res, next) => {
         throw new Error('Each product must have a productId and quantity.');
       }
 
+      if (quantity <= 0) {
+        throw new Error('Quantity must be greater than zero.');
+      }
+
       // Find the Product
       const product = await Product.findOne({ productId }).session(session);
       if (!product) {
@@ -497,21 +500,25 @@ exports.stockIn = async (req, res, next) => {
       await product.updateTotalStock();
     }
 
-    // Create a StockTransaction
-    const stockTransaction = new StockTransaction({
+    // Create a StockTransaction for Stock In
+    const stockInTransaction = new StockTransaction({
       transactionType: 'stockIn',
       warehouseId,
-      products,
+      products: products.map((prod) => ({
+        productId: prod.productId,
+        quantity: prod.quantity,
+        unit: prod.unit || 'kg',
+      })),
       performedBy: performedBy || 'System', // Replace with actual user if available
       notes: notes || '',
       relatedTransactionType: purchaseId ? 'Purchase' : undefined,
       relatedTransaction: purchaseId ? purchase._id : undefined,
     });
-    await stockTransaction.save({ session });
+    await stockInTransaction.save({ session });
 
     // Link StockTransaction to Purchase if applicable
     if (purchase) {
-      purchase.stockTransaction = stockTransaction._id;
+      purchase.stockTransaction = stockInTransaction._id;
       await purchase.save({ session });
     }
 
@@ -521,10 +528,21 @@ exports.stockIn = async (req, res, next) => {
 
     res.status(200).json({
       message: 'Stock added successfully.',
-      stockTransaction,
+      stockTransaction: {
+        _id: stockInTransaction._id,
+        transactionId: stockInTransaction.transactionId,
+        transactionType: stockInTransaction.transactionType,
+        warehouseId: stockInTransaction.warehouseId,
+        products: stockInTransaction.products,
+        performedBy: stockInTransaction.performedBy,
+        notes: stockInTransaction.notes,
+        relatedTransactionType: stockInTransaction.relatedTransactionType,
+        relatedTransaction: stockInTransaction.relatedTransaction,
+        timestamp: stockInTransaction.timestamp,
+      },
     });
   } catch (error) {
-    // Abort the transaction on error
+    // Abort the Transaction on Error
     await session.abortTransaction();
     session.endSession();
 
@@ -532,7 +550,6 @@ exports.stockIn = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 /**
  * Stock Out function
@@ -558,7 +575,7 @@ exports.stockOut = async (req, res, next) => {
 
     let salesTransaction = null;
     if (salesTransactionId) {
-      salesTransaction = await SalesTransaction.findOne({ salesTransactionId: salesTransactionId }).session(session);
+      salesTransaction = await SalesTransaction.findOne({ salesTransactionId }).session(session);
       if (!salesTransaction) {
         throw new Error('SalesTransaction not found.');
       }
@@ -570,6 +587,10 @@ exports.stockOut = async (req, res, next) => {
 
       if (!productId || quantity === undefined) {
         throw new Error('Each product must have a productId and quantity.');
+      }
+
+      if (quantity <= 0) {
+        throw new Error('Quantity must be greater than zero.');
       }
 
       // Find the Product
@@ -598,21 +619,25 @@ exports.stockOut = async (req, res, next) => {
       await product.updateTotalStock();
     }
 
-    // Create a StockTransaction
-    const stockTransaction = new StockTransaction({
+    // Create a StockTransaction for Stock Out
+    const stockOutTransaction = new StockTransaction({
       transactionType: 'stockOut',
       warehouseId,
-      products,
+      products: products.map((prod) => ({
+        productId: prod.productId,
+        quantity: prod.quantity,
+        unit: prod.unit || 'kg',
+      })),
       performedBy: performedBy || 'System',
       notes: notes || '',
       relatedTransactionType: salesTransactionId ? 'SalesTransaction' : undefined,
       relatedTransaction: salesTransactionId ? salesTransaction._id : undefined,
     });
-    await stockTransaction.save({ session });
+    await stockOutTransaction.save({ session });
 
     // Link StockTransaction to SalesTransaction if applicable
     if (salesTransaction) {
-      salesTransaction.stockTransaction = stockTransaction._id;
+      salesTransaction.stockTransaction = stockOutTransaction._id;
       await salesTransaction.save({ session });
     }
 
@@ -622,10 +647,21 @@ exports.stockOut = async (req, res, next) => {
 
     res.status(200).json({
       message: 'Stock removed successfully.',
-      stockTransaction,
+      stockTransaction: {
+        _id: stockOutTransaction._id,
+        transactionId: stockOutTransaction.transactionId,
+        transactionType: stockOutTransaction.transactionType,
+        warehouseId: stockOutTransaction.warehouseId,
+        products: stockOutTransaction.products,
+        performedBy: stockOutTransaction.performedBy,
+        notes: stockOutTransaction.notes,
+        relatedTransactionType: stockOutTransaction.relatedTransactionType,
+        relatedTransaction: stockOutTransaction.relatedTransaction,
+        timestamp: stockOutTransaction.timestamp,
+      },
     });
   } catch (error) {
-    // Abort the transaction on error
+    // Abort the Transaction on Error
     await session.abortTransaction();
     session.endSession();
 
@@ -633,7 +669,6 @@ exports.stockOut = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 /**
  * Adjust Stock function
