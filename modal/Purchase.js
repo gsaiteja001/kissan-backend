@@ -39,6 +39,11 @@ const PurchaseSchema = new mongoose.Schema({
     amountPaid: { type: Number, min: [0, 'Amount paid cannot be negative'] },
   },
   notes: { type: String },
+  stockTransaction: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StockTransaction',
+    required: false,
+  },
 }, { timestamps: true });
 
 // Pre-save middleware to calculate totals
