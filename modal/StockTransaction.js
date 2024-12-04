@@ -1,8 +1,13 @@
+// models/StockTransaction.js
+
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 // Define the types of transactions
 const TRANSACTION_TYPES = ['stockIn', 'stockOut', 'adjust', 'moveStock'];
+
+// Define the types of related transactions
+const RELATED_TRANSACTION_TYPES = ['StockTransaction', 'Purchase', 'SalesTransaction'];
 
 // Subschema for individual product transactions within a StockTransaction
 const productTransactionSchema = new mongoose.Schema({
@@ -42,9 +47,14 @@ const stockTransactionSchema = new mongoose.Schema(
       trim: true,
     },
     products: [productTransactionSchema], // Array of products involved in the transaction
-    relatedTransaction: { // For transactions like moveStock that might relate to another transaction
-      type: mongoose.Schema.Types.ObjectId, // Changed to ObjectId
-      ref: 'StockTransaction',
+    relatedTransactionType: {
+      type: String,
+      enum: RELATED_TRANSACTION_TYPES,
+      required: false,
+    },
+    relatedTransaction: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'relatedTransactionType',
       required: false,
     },
     performedBy: {
@@ -69,4 +79,5 @@ const stockTransactionSchema = new mongoose.Schema(
 stockTransactionSchema.index({ warehouseId: 1, transactionType: 1, timestamp: -1 });
 stockTransactionSchema.index({ 'products.productId': 1 });
 
+// Export the StockTransaction model
 module.exports = mongoose.model('StockTransaction', stockTransactionSchema);
