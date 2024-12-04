@@ -97,6 +97,11 @@ const OrderSchema = new Schema(
     reasonForReturn: { type: String, required: false },
     customerRemarks: { type: String, required: false },
     adminRemarks: { type: String, required: false },
+    fulfillingWarehouse: {
+      type: String,
+      required: true,
+      ref: 'Warehouse',
+    },
   },
   { timestamps: true }
 );
