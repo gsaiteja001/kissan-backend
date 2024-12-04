@@ -256,7 +256,6 @@ exports.updateWarehouse = async (req, res, next) => {
           // For arrays of embedded documents, replace the entire array
           warehouse[key] = updateFields[key];
         } else if (key === 'linkedSuppliers') {
-          // For linkedSuppliers (array of ObjectIds), ensure they are valid MongoDB ObjectIds
           warehouse[key] = updateFields[key].map((supplierId) => {
             if (!mongoose.Types.ObjectId.isValid(supplierId)) {
               throw new Error(`Invalid Supplier ID: ${supplierId}`);
@@ -276,14 +275,11 @@ exports.updateWarehouse = async (req, res, next) => {
       }
     }
 
-    // Save the updated warehouse
     await warehouse.save();
 
     // Populate necessary fields before sending the response
     // Only populate referenced fields (linkedSuppliers)
     await warehouse.populate('linkedSuppliers', 'name contactInfo');
-
-    // Note: 'staff' is an embedded subdocument and does not require population
 
     res.status(200).json({
       success: true,
