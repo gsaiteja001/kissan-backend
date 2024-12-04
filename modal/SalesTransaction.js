@@ -37,7 +37,7 @@ const SalesTransactionSchema = new mongoose.Schema({
     amountPaid: { type: Number, min: [0, 'Amount paid cannot be negative'] },
   },
   notes: { type: String },
-  stockTransaction: {
+  stockTransaction: { // Reference to StockTransaction
     type: mongoose.Schema.Types.ObjectId,
     ref: 'StockTransaction',
     required: false,
