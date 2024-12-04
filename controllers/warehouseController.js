@@ -448,7 +448,7 @@ exports.stockIn = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { warehouseId, products, performedBy, notes } = req.body;
+    const { warehouseId, products, performedBy, notes, purchaseId } = req.body;
 
     // Validate input
     if (!warehouseId || !products || !Array.isArray(products) || products.length === 0) {
@@ -492,11 +492,12 @@ exports.stockIn = async (req, res, next) => {
 
     // Create a StockTransaction
     const stockTransaction = new StockTransaction({
-      transactionType: 'stockIn',
-      warehouseId,
-      products,
-      performedBy: performedBy || 'System', // Replace with actual user if available
-      notes: notes || '',
+    transactionType: 'stockIn',
+    warehouseId,
+    products,
+    performedBy: performedBy || 'System',
+    notes: notes || '',
+    relatedTransaction: purchaseId, 
     });
     await stockTransaction.save({ session });
 
@@ -529,7 +530,7 @@ exports.stockOut = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { warehouseId, products, performedBy, notes } = req.body;
+    const { warehouseId, products, performedBy, notes, salesTransactionId } = req.body;
 
     // Validate input
     if (!warehouseId || !products || !Array.isArray(products) || products.length === 0) {
@@ -583,6 +584,7 @@ exports.stockOut = async (req, res, next) => {
       products,
       performedBy: performedBy || 'System',
       notes: notes || '',
+      relatedTransaction: salesTransactionId, 
     });
     await stockTransaction.save({ session });
 
