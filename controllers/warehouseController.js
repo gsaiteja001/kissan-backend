@@ -217,6 +217,20 @@ exports.getWarehouseById = async (req, res, next) => {
   }
 };
 
+// Helper function to perform deep merge of objects
+function mergeDeep(target, source) {
+  if (typeof target !== 'object' || typeof source !== 'object') return source;
+  for (const key in source) {
+    if (source[key] instanceof Date) {
+      target[key] = source[key];
+    } else if (source[key] && typeof source[key] === 'object') {
+      target[key] = mergeDeep(target[key] || {}, source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
 
 exports.updateWarehouse = async (req, res, next) => {
   try {
@@ -237,22 +251,27 @@ exports.updateWarehouse = async (req, res, next) => {
     // Iterate through updateFields to update the warehouse document
     for (let key in updateFields) {
       if (Array.isArray(updateFields[key])) {
-        // For array fields, handle updates carefully
+        // Handle array fields
         if (['staff', 'maintenanceSchedule', 'complianceCertificates'].includes(key)) {
-          // For arrays of embedded documents, update them accordingly
+          // For arrays of embedded documents, replace the entire array
           warehouse[key] = updateFields[key];
         } else if (key === 'linkedSuppliers') {
-          // For linkedSuppliers (array of ObjectIds), ensure valid ObjectIds
-          warehouse[key] = updateFields[key].map((supplierId) => supplierId);
+          // For linkedSuppliers (array of ObjectIds), ensure they are valid MongoDB ObjectIds
+          warehouse[key] = updateFields[key].map((supplierId) => {
+            if (!mongoose.Types.ObjectId.isValid(supplierId)) {
+              throw new Error(`Invalid Supplier ID: ${supplierId}`);
+            }
+            return supplierId;
+          });
         } else {
-          // For other array fields, replace the entire array
+          // For any other array fields, replace the entire array
           warehouse[key] = updateFields[key];
         }
       } else if (typeof updateFields[key] === 'object' && updateFields[key] !== null) {
-        // For nested objects, merge the fields deeply
+        // For nested objects, perform a deep merge to update only provided fields
         warehouse[key] = mergeDeep(warehouse[key], updateFields[key]);
       } else {
-        // For simple fields, directly assign the value
+        // For simple scalar fields, directly assign the new value
         warehouse[key] = updateFields[key];
       }
     }
@@ -261,10 +280,10 @@ exports.updateWarehouse = async (req, res, next) => {
     await warehouse.save();
 
     // Populate necessary fields before sending the response
-    await warehouse
-      .populate('linkedSuppliers', 'name contactInfo')
-      .populate('staff', 'name role contact')
-      .execPopulate();
+    // Only populate referenced fields (linkedSuppliers)
+    await warehouse.populate('linkedSuppliers', 'name contactInfo');
+
+    // Note: 'staff' is an embedded subdocument and does not require population
 
     res.status(200).json({
       success: true,
@@ -272,25 +291,16 @@ exports.updateWarehouse = async (req, res, next) => {
     });
   } catch (error) {
     console.error(error);
+    // Handle validation errors separately if needed
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
     next(error);
   }
 };
-
-// Helper function to perform deep merge of objects
-function mergeDeep(target, source) {
-  if (typeof target !== 'object' || typeof source !== 'object') return source;
-  for (const key in source) {
-    if (source[key] instanceof Date) {
-      target[key] = source[key];
-    } else if (source[key] && typeof source[key] === 'object') {
-      target[key] = mergeDeep(target[key] || {}, source[key]);
-    } else {
-      target[key] = source[key];
-    }
-  }
-  return target;
-}
-
 
 
 /**
