@@ -438,10 +438,9 @@ exports.updateInventoryItem = async (req, res, next) => {
   }
 };
 
-
 /**
  * Stock In function
- * Adds stock to specific products in a warehouse
+ * Adds stock to specific products in a warehouse and links to a Purchase
  */
 exports.stockIn = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -459,6 +458,14 @@ exports.stockIn = async (req, res, next) => {
     const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
     if (!warehouse) {
       throw new Error('Warehouse not found.');
+    }
+
+    let purchase = null;
+    if (purchaseId) {
+      purchase = await Purchase.findOne({ purchaseId }).session(session);
+      if (!purchase) {
+        throw new Error('Purchase not found.');
+      }
     }
 
     // Iterate over each product in the transaction
@@ -492,14 +499,21 @@ exports.stockIn = async (req, res, next) => {
 
     // Create a StockTransaction
     const stockTransaction = new StockTransaction({
-    transactionType: 'stockIn',
-    warehouseId,
-    products,
-    performedBy: performedBy || 'System',
-    notes: notes || '',
-    relatedTransaction: purchaseId, 
+      transactionType: 'stockIn',
+      warehouseId,
+      products,
+      performedBy: performedBy || 'System', // Replace with actual user if available
+      notes: notes || '',
+      relatedTransactionType: purchaseId ? 'Purchase' : undefined,
+      relatedTransaction: purchaseId ? purchase._id : undefined,
     });
     await stockTransaction.save({ session });
+
+    // Link StockTransaction to Purchase if applicable
+    if (purchase) {
+      purchase.stockTransaction = stockTransaction._id;
+      await purchase.save({ session });
+    }
 
     // Commit the transaction
     await session.commitTransaction();
@@ -520,10 +534,9 @@ exports.stockIn = async (req, res, next) => {
 };
 
 
-
 /**
  * Stock Out function
- * Removes stock from specific products in a warehouse
+ * Removes stock from specific products in a warehouse and links to a SalesTransaction
  */
 exports.stockOut = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -541,6 +554,14 @@ exports.stockOut = async (req, res, next) => {
     const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
     if (!warehouse) {
       throw new Error('Warehouse not found.');
+    }
+
+    let salesTransaction = null;
+    if (salesTransactionId) {
+      salesTransaction = await SalesTransaction.findOne({ salesTransactionId: salesTransactionId }).session(session);
+      if (!salesTransaction) {
+        throw new Error('SalesTransaction not found.');
+      }
     }
 
     // Iterate over each product in the transaction
@@ -584,9 +605,16 @@ exports.stockOut = async (req, res, next) => {
       products,
       performedBy: performedBy || 'System',
       notes: notes || '',
-      relatedTransaction: salesTransactionId, 
+      relatedTransactionType: salesTransactionId ? 'SalesTransaction' : undefined,
+      relatedTransaction: salesTransactionId ? salesTransaction._id : undefined,
     });
     await stockTransaction.save({ session });
+
+    // Link StockTransaction to SalesTransaction if applicable
+    if (salesTransaction) {
+      salesTransaction.stockTransaction = stockTransaction._id;
+      await salesTransaction.save({ session });
+    }
 
     // Commit the transaction
     await session.commitTransaction();
@@ -605,7 +633,6 @@ exports.stockOut = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 
 /**
