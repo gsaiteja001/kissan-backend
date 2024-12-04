@@ -217,15 +217,12 @@ exports.getWarehouseById = async (req, res, next) => {
   }
 };
 
-/**
- * @desc    Update a warehouse by ID
- * @route   PUT /api/warehouses/:id
- * @access  Public (Adjust access as needed)
- */
+
 exports.updateWarehouse = async (req, res, next) => {
   try {
     const { id } = req.params; // warehouseId
 
+    // Find the warehouse by warehouseId
     let warehouse = await Warehouse.findOne({ warehouseId: id });
 
     if (!warehouse) {
@@ -240,11 +237,20 @@ exports.updateWarehouse = async (req, res, next) => {
     // Iterate through updateFields to update the warehouse document
     for (let key in updateFields) {
       if (Array.isArray(updateFields[key])) {
-        // For array fields, replace the entire array
-        warehouse[key] = updateFields[key];
+        // For array fields, handle updates carefully
+        if (['staff', 'maintenanceSchedule', 'complianceCertificates'].includes(key)) {
+          // For arrays of embedded documents, update them accordingly
+          warehouse[key] = updateFields[key];
+        } else if (key === 'linkedSuppliers') {
+          // For linkedSuppliers (array of ObjectIds), ensure valid ObjectIds
+          warehouse[key] = updateFields[key].map((supplierId) => supplierId);
+        } else {
+          // For other array fields, replace the entire array
+          warehouse[key] = updateFields[key];
+        }
       } else if (typeof updateFields[key] === 'object' && updateFields[key] !== null) {
-        // For nested objects, merge the fields
-        warehouse[key] = { ...warehouse[key], ...updateFields[key] };
+        // For nested objects, merge the fields deeply
+        warehouse[key] = mergeDeep(warehouse[key], updateFields[key]);
       } else {
         // For simple fields, directly assign the value
         warehouse[key] = updateFields[key];
@@ -253,6 +259,12 @@ exports.updateWarehouse = async (req, res, next) => {
 
     // Save the updated warehouse
     await warehouse.save();
+
+    // Populate necessary fields before sending the response
+    await warehouse
+      .populate('linkedSuppliers', 'name contactInfo')
+      .populate('staff', 'name role contact')
+      .execPopulate();
 
     res.status(200).json({
       success: true,
@@ -263,6 +275,22 @@ exports.updateWarehouse = async (req, res, next) => {
     next(error);
   }
 };
+
+// Helper function to perform deep merge of objects
+function mergeDeep(target, source) {
+  if (typeof target !== 'object' || typeof source !== 'object') return source;
+  for (const key in source) {
+    if (source[key] instanceof Date) {
+      target[key] = source[key];
+    } else if (source[key] && typeof source[key] === 'object') {
+      target[key] = mergeDeep(target[key] || {}, source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
+
 
 
 /**
