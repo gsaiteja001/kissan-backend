@@ -224,29 +224,42 @@ exports.getWarehouseById = async (req, res, next) => {
  */
 exports.updateWarehouse = async (req, res, next) => {
   try {
-    const { warehouseId } = req.params;
-    const updatedWarehouse = await Warehouse.findOneAndUpdate(
-      { warehouseId },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const { id } = req.params; // warehouseId
 
-    if (!updatedWarehouse) {
+    let warehouse = await Warehouse.findOne({ warehouseId: id });
+
+    if (!warehouse) {
       return res.status(404).json({
         success: false,
         message: 'Warehouse not found.',
       });
     }
 
+    const updateFields = req.body;
+
+    // Iterate through updateFields to update the warehouse document
+    for (let key in updateFields) {
+      if (Array.isArray(updateFields[key])) {
+        // For array fields, replace the entire array
+        warehouse[key] = updateFields[key];
+      } else if (typeof updateFields[key] === 'object' && updateFields[key] !== null) {
+        // For nested objects, merge the fields
+        warehouse[key] = { ...warehouse[key], ...updateFields[key] };
+      } else {
+        // For simple fields, directly assign the value
+        warehouse[key] = updateFields[key];
+      }
+    }
+
+    // Save the updated warehouse
+    await warehouse.save();
+
     res.status(200).json({
       success: true,
-      data: updatedWarehouse,
+      data: warehouse,
     });
   } catch (error) {
-    if (error.code === 11000) {
-      error.status = 400;
-      error.message = 'Warehouse with this name already exists.';
-    }
+    console.error(error);
     next(error);
   }
 };
