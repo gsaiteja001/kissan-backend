@@ -74,6 +74,10 @@ app.use('/api/warehouses', warehouseRoutes);
 const supplierRoutes = require('./routes/suppliers');
 app.use('/suppliers', supplierRoutes);
 
+const saleRoutes = require('./routes/saleRoutes');
+app.use('/api/sale/create', supplierRoutes);
+
+
 
 
 // Initialize Firebase Admin SDK
