@@ -732,10 +732,6 @@ exports.adjustStock = async (req, res, next) => {
   }
 };
 
-
-
-
-
 /**
  * Move Stock function
  * Transfers stock of specific products from one warehouse to another.
@@ -888,7 +884,8 @@ exports.moveStock = async (req, res, next) => {
         `Received ${products
           .map((p) => `${p.quantity} ${p.unit || 'kg'} of ${p.productId}`)
           .join(', ')} from warehouse ${sourceWarehouseId}.`,
-      relatedTransaction: stockOutTransaction.transactionId, // Link to the stockOut transaction
+      relatedTransactionType: 'StockTransaction', // Specifies that relatedTransaction refers to a StockTransaction
+      relatedTransaction: stockOutTransaction._id, // Reference to the stockOutTransaction's _id
     });
     await stockInTransaction.save({ session });
 
@@ -898,8 +895,16 @@ exports.moveStock = async (req, res, next) => {
 
     res.status(200).json({
       message: 'Stock moved successfully.',
-      stockOutTransaction,
-      stockInTransaction,
+      stockOutTransaction: {
+        _id: stockOutTransaction._id,
+        transactionId: stockOutTransaction.transactionId,
+        // ... other fields ...
+      },
+      stockInTransaction: {
+        _id: stockInTransaction._id,
+        transactionId: stockInTransaction.transactionId,
+        // ... other fields ...
+      },
     });
   } catch (error) {
     // Abort the Transaction on Error
