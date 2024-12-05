@@ -1,5 +1,3 @@
-// server/routes/upload.js
-
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -11,8 +9,8 @@ require('dotenv').config();
 const s3 = new S3Client({
   region: 'ap-south-1',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Use environment variables for security
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, // Use environment variables for security
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID, 
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
 
@@ -37,11 +35,11 @@ router.post('/', upload.single('image'), async (req, res) => {
 
   // Define S3 upload parameters, including the folder path
   const params = {
-    Bucket: 'gadupathi', // Your S3 bucket name
-    Key: `kissanfarm_products/${desiredName}`, // Folder path + desired image name
+    Bucket: 'gadupathi', 
+    Key: `kissanfarm_products/${desiredName}`, 
     Body: file.buffer,
     ContentType: file.mimetype,
-    ACL: 'public-read', // Optional: Set permissions (e.g., public read)
+
   };
 
   try {
