@@ -71,30 +71,39 @@ router.get('/similarManufacturer', async (req, res) => {
 });
 
 
-// GET /api/productsByIds
-router.get('/productsByIds', async (req, res) => {
+/**
+ * @route   GET /api/warehouses/area-of-interest
+ * @desc    Get warehouses within the area of interest based on user's location
+ * @access  Public or Protected based on your authentication
+ * @queryParams
+ *          - lat: Number (required) - User's latitude
+ *          - long: Number (required) - User's longitude
+ */
+router.get('/area-of-interest', async (req, res) => {
   try {
-    const { ids, lang } = req.query;
+    const { lat, long } = req.query;
 
-    if (!ids) {
-      return res.status(400).json({ message: 'Product IDs are required.' });
+    // Input validation
+    if (!lat || !long) {
+      return res.status(400).json({ message: 'Latitude and Longitude are required.' });
     }
 
-    // Split the comma-separated IDs into an array
-    const productIds = ids.split(',').map(id => id.trim());
+    const userLat = parseFloat(lat);
+    const userLong = parseFloat(long);
 
-    if (!Array.isArray(productIds) || productIds.length === 0) {
-      return res.status(400).json({ message: 'Invalid product IDs.' });
+    if (isNaN(userLat) || isNaN(userLong)) {
+      return res.status(400).json({ message: 'Invalid latitude or longitude.' });
     }
 
-    // Fetch products based on the IDs
-    const products = await Product.find({ productId: { $in: productIds }, archived: false });
+    // Get warehouses in the area of interest
+    const warehouses = await getWarehousesInAreaOfInterest(userLat, userLong);
 
-    return res.status(200).json(products);
+    return res.status(200).json({ warehouses });
   } catch (error) {
-    console.error('Error in /productsByIds:', error);
+    console.error('Error in /warehouses/area-of-interest:', error);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 });
+
 
 module.exports = router;
