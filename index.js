@@ -84,6 +84,9 @@ app.use('/suppliers', supplierRoutes);
 const saleRoutes = require('./routes/saleRoutes');
 app.use('/api/sale', saleRoutes);
 
+const migrateCoordinatesRoutes = require('./routes/migrateCoordinates');
+app.use('/api/migrateCoordinates', migrateCoordinatesRoutes);
+
 
 
 
