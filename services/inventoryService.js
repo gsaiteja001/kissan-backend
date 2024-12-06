@@ -4,7 +4,7 @@ const Warehouse = require('../modal/warehouse');
 const Product = require('../modal/product');
 const InventoryItem = require('../modal/InventoryItem');
 
-const { getAsync, setAsync } = require('./redisClient');
+const { getAsync, setAsync } = require('../redisClient');
 
 /**
  * Adds stock to a specific product in a warehouse.
