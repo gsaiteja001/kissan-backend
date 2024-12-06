@@ -101,6 +101,62 @@ router.post('/get-product-ids', async (req, res) => {
 
 
 /**
+ * @route   GET /api/productsByIds
+ * @desc    Retrieve detailed product information based on product IDs with localization support
+ * @access  Public or Protected based on your authentication
+ * @queryParams
+ *          - lang: String (optional, default: 'en')
+ *          - ids: String (required, comma-separated productIds)
+ * @returns {Array} - Array of localized product objects
+ */
+router.get('/productsByIds', async (req, res) => {
+  console.log('Received request for /api/productsByIds');
+  console.log('Query Parameters:', req.query);
+  
+  const lang = req.query.lang || 'en';
+  const idsParam = req.query.ids;
+  
+  try {
+    // Input Validation
+    if (!idsParam || typeof idsParam !== 'string' || idsParam.trim() === '') {
+      console.error('Invalid or missing "ids" parameter.');
+      return res.status(400).json({ message: '"ids" query parameter is required and must be a non-empty string.' });
+    }
+    
+    // Split the ids into an array and trim whitespace
+    const productIds = idsParam.split(',').map(id => id.trim()).filter(id => id !== '');
+    
+    if (productIds.length === 0) {
+      console.error('No valid product IDs provided after parsing.');
+      return res.status(400).json({ message: 'At least one valid productId must be provided in the "ids" parameter.' });
+    }
+    
+    console.log(`Fetching products with IDs: ${productIds.join(', ')}`);
+    
+    // Fetch products from the database
+    const products = await Product.find({ productId: { $in: productIds } }).exec();
+    
+    console.log(`Found ${products.length} products.`);
+    
+    if (products.length === 0) {
+      return res.status(404).json({ message: 'No products found for the provided IDs.' });
+    }
+    
+    // Localize products
+    const localizedProducts = products.map(product => translateProduct(product, lang));
+    
+    console.log(`Returning ${localizedProducts.length} localized products.`);
+    
+    return res.status(200).json(localizedProducts);
+  } catch (error) {
+    console.error('Error fetching products by IDs:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+
+
+/**
  * @route   GET /api/warehouses/area-of-interest
  * @desc    Get warehouses within the area of interest based on user's location
  * @access  Public or Protected based on your authentication
