@@ -144,7 +144,18 @@ const warehouseSchema = new mongoose.Schema(
       reportsGenerated: [{ type: String }], // e.g., "Monthly Stock Report"
     },
     staff: [staffSchema], // Integrated Staff Sub-schema
-    archived: { type: Boolean, default: false }, // Soft delete mechanism
+    archived: { type: Boolean, default: false },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        required: true,
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        required: true,
+      },
+    },
   },
   { timestamps: true }
 );
@@ -162,6 +173,9 @@ warehouseSchema.set('toJSON', { virtuals: true });
 
 // Indexing warehouseId for faster queries and uniqueness
 warehouseSchema.index({ warehouseId: 1 }, { unique: true });
+
+// Create 2dsphere index on location
+warehouseSchema.index({ location: '2dsphere' });
 
 // Export the Warehouse model
 module.exports = mongoose.model('Warehouse', warehouseSchema);
