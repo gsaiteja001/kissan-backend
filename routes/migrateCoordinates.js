@@ -1,8 +1,8 @@
-// routes/warehouses.js
+
 const express = require('express');
 const router = express.Router();
 const Warehouse = require('../modal/warehouse'); // Adjust the path as necessary
-const logger = require('../utils/logger'); // Ensure you have a logger set up
+
 
 /**
  * @route   POST /api/warehouses/migrate-coordinates
@@ -12,7 +12,7 @@ const logger = require('../utils/logger'); // Ensure you have a logger set up
  */
 router.post('/migrate-coordinates', async (req, res) => {
     try {
-      logger.info('Migration started: Coordinating to Location.');
+      console.log('Migration started: Coordinating to Location.');
 
       // Step 1: Find all warehouses that have 'coordinates' but do not have 'location'
       const warehousesToMigrate = await Warehouse.find({
@@ -20,7 +20,7 @@ router.post('/migrate-coordinates', async (req, res) => {
         location: { $exists: false },
       }).exec();
 
-      logger.info(`Found ${warehousesToMigrate.length} warehouses to migrate.`);
+      console.log(`Found ${warehousesToMigrate.length} warehouses to migrate.`);
 
       if (warehousesToMigrate.length === 0) {
         return res.status(200).json({ message: 'No warehouses require migration.', migratedCount: 0 });
@@ -53,18 +53,18 @@ router.post('/migrate-coordinates', async (req, res) => {
           await warehouse.save();
           migratedCount += 1;
         } else {
-          logger.warn(`Invalid coordinates for Warehouse ID: ${warehouse.warehouseId}. Skipping migration for this document.`);
+          console.log(`Invalid coordinates for Warehouse ID: ${warehouse.warehouseId}. Skipping migration for this document.`);
         }
       }
 
-      logger.info(`Migration completed: ${migratedCount} warehouses migrated.`);
+      console.log(`Migration completed: ${migratedCount} warehouses migrated.`);
 
       return res.status(200).json({ 
         message: `Migration completed successfully. ${migratedCount} warehouses migrated.`,
         migratedCount 
       });
     } catch (error) {
-      logger.error(`Migration failed: ${error.message}`);
+      console.log(`Migration failed: ${error.message}`);
       return res.status(500).json({ message: 'Migration failed.', error: error.message });
     }
   }
