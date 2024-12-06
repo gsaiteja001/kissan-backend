@@ -67,12 +67,19 @@ const translateProduct = require('./utils/translateProduct');
 const orderRoutes = require('./routes/orderRoutes');
 app.use('/orders', orderRoutes); 
 
-const warehouseRoutes = require('./routes/warehouseRoutes');
 
+const productsRoutes = require('./routes/products');
+app.use('/api/products', productsRoutes);
+
+const warehouseRoutes = require('./routes/warehouseRoutes');
 app.use('/api/warehouses', warehouseRoutes);
+
+
 
 const supplierRoutes = require('./routes/suppliers');
 app.use('/suppliers', supplierRoutes);
+
+
 
 const saleRoutes = require('./routes/saleRoutes');
 app.use('/api/sale', saleRoutes);
