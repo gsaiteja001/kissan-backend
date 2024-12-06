@@ -133,5 +133,4 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
     throw error; // Propagate the error to be handled upstream
   }
 };
-
 module.exports = { getWarehousesInAreaOfInterest };
