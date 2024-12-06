@@ -25,6 +25,8 @@ const router = express.Router();
 
 const { body, validationResult } = require('express-validator');
 
+const { getWarehousesInAreaOfInterest } = require('../controllers/nearBywarehouse');
+
 // Middleware for validating stock transaction inputs
 const validateAdjustStock = [
   body('warehouseId').notEmpty().withMessage('warehouseId is required.'),
@@ -168,6 +170,42 @@ router.get('/transactions', async (req, res) => {
   } catch (err) {
     console.error('Error fetching transactions:', err);
     res.status(500).json({ message: 'Server error while fetching transactions' });
+  }
+});
+
+
+
+/**
+ * @route   GET /api/warehouses/area-of-interest
+ * @desc    Get warehouses within the area of interest based on user's location
+ * @access  Public or Protected based on your authentication
+ * @queryParams
+ *          - lat: Number (required) - User's latitude
+ *          - long: Number (required) - User's longitude
+ */
+router.get('/area-of-interest', async (req, res) => {
+  try {
+    const { lat, long } = req.query;
+
+    // Input validation
+    if (!lat || !long) {
+      return res.status(400).json({ message: 'Latitude and Longitude are required.' });
+    }
+
+    const userLat = parseFloat(lat);
+    const userLong = parseFloat(long);
+
+    if (isNaN(userLat) || isNaN(userLong)) {
+      return res.status(400).json({ message: 'Invalid latitude or longitude.' });
+    }
+
+    // Get warehouses in the area of interest
+    const warehouses = await getWarehousesInAreaOfInterest(userLat, userLong);
+
+    return res.status(200).json({ warehouses });
+  } catch (error) {
+    console.error('Error in /warehouses/area-of-interest:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
   }
 });
 
