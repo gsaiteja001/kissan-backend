@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const translateProduct = require('../utils/translateProduct');
 const Product = require('../modal/product'); 
+const { getProductIdsFromWarehouses } = require('../controllers/inventoryController');
+
 
 // Similar Products Route
 router.get('/similarProducts', async (req, res) => {
@@ -67,6 +69,33 @@ router.get('/similarManufacturer', async (req, res) => {
   } catch (error) {
     console.error('Error fetching manufacturer products:', error);
     res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+
+/**
+ * @route   POST /api/inventory/get-product-ids
+ * @desc    Get unique productIds from multiple warehouses
+ * @access  Public or Protected based on your authentication
+ * @bodyParams
+ *          - warehouseIds: Array of strings (required)
+ */
+router.post('/get-product-ids', async (req, res) => {
+  try {
+    const { warehouseIds } = req.body;
+
+    // Input validation
+    if (!warehouseIds || !Array.isArray(warehouseIds) || warehouseIds.length === 0) {
+      return res.status(400).json({ message: 'warehouseIds array is required and cannot be empty.' });
+    }
+
+    // Fetch unique productIds
+    const productIds = await getProductIdsFromWarehouses(warehouseIds);
+
+    return res.status(200).json({ productIds });
+  } catch (error) {
+    console.error('Error in /api/inventory/get-product-ids:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
   }
 });
 
