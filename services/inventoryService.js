@@ -331,6 +331,37 @@ async function getAllWarehousesWithInventory() {
 
 
 /**
+ * Retrieves unique productIds from the InventoryItem collection based on provided warehouseIds.
+ * 
+ * @param {Array} warehouseIds - Array of warehouseId strings.
+ * @returns {Array} - Array of unique productId strings.
+ */
+const getProductIdsFromWarehouses = async (warehouseIds) => {
+  try {
+    if (!Array.isArray(warehouseIds) || warehouseIds.length === 0) {
+      throw new Error('Invalid warehouseIds provided.');
+    }
+
+    // Aggregate to get unique productIds from the specified warehouses
+    const products = await InventoryItem.aggregate([
+      { $match: { warehouseId: { $in: warehouseIds }, stockQuantity: { $gt: 0 } } },
+      { $group: { _id: null, uniqueProductIds: { $addToSet: '$productId' } } },
+      { $project: { _id: 0, uniqueProductIds: 1 } },
+    ]);
+
+    if (products.length === 0) {
+      return [];
+    }
+
+    return products[0].uniqueProductIds;
+  } catch (error) {
+    console.error('Error in getProductIdsFromWarehouses:', error);
+    throw error;
+  }
+};
+
+
+/**
  * Adds multiple products to a warehouse with respective quantities.
  */
 // async function addMultipleProductsToWarehouse(warehouseId, products) {
@@ -410,4 +441,5 @@ module.exports = {
   listInventoryItems,
   addMultipleProductsToWarehouse,
   getAllWarehousesWithInventory,
+  getProductIdsFromWarehouses,
 };
