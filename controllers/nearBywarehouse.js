@@ -15,10 +15,10 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
     const nearbyWarehouses = await Warehouse.aggregate([
       {
         $geoNear: {
-          near: { type: 'Point', coordinates: [userLong, userLat] },
+          near: { type: 'Point', coordinates: [userLong, userLat] }, // [longitude, latitude]
           distanceField: 'distanceToUser',
           spherical: true,
-          query: { archived: false },
+          query: { archived: false }, // Exclude archived warehouses
           // No maxDistance to retrieve all relevant warehouses
         },
       },
@@ -104,7 +104,7 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
           near: { type: 'Point', coordinates: [userLong, userLat] },
           distanceField: 'distanceToUser',
           spherical: true,
-          query: { archived: false },
+          query: { archived: false }, // Exclude archived warehouses
           maxDistance: outerRadius, // Upper bound of the area
         },
       },
@@ -117,6 +117,7 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
         $project: {
           _id: 0,
           location: 1,
+          warehouseName: 1,
           // Include other fields if necessary
         },
       },
