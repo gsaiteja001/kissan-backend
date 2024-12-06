@@ -1,0 +1,43 @@
+
+const redis = require('redis');
+
+// Create a Redis client
+const client = redis.createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379', // Update with your Redis URL
+});
+
+// Connect to Redis
+client.connect()
+  .then(() => {
+    console.log('Connected to Redis successfully.');
+  })
+  .catch((err) => {
+    console.error('Failed to connect to Redis:', err);
+  });
+
+// Handle Redis errors
+client.on('error', (err) => {
+  console.error('Redis Client Error', err);
+});
+
+// Export getAsync and setAsync functions
+module.exports = {
+  getAsync: async (key) => {
+    try {
+      const value = await client.get(key);
+      return value;
+    } catch (error) {
+      console.error('Error getting key from Redis:', error);
+      return null;
+    }
+  },
+  setAsync: async (key, expirationInSeconds, value) => {
+    try {
+      await client.set(key, value, {
+        EX: expirationInSeconds, // Expiration time in seconds
+      });
+    } catch (error) {
+      console.error('Error setting key in Redis:', error);
+    }
+  },
+};
