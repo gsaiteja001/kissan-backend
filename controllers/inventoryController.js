@@ -8,17 +8,25 @@ exports.addProductToWarehouse = async (req, res) => {
     const warehouseId = req.params.warehouseId;
     const { productData, quantity } = req.body;
 
+    // Validate quantity
     if (!quantity || quantity <= 0) {
       return res.status(400).json({ message: 'Quantity must be a positive number.' });
     }
 
+    // Add product to warehouse
     const inventoryItem = await inventoryService.addProductToWarehouse(warehouseId, productData, quantity);
-    res.status(201).json({ message: 'Product added to warehouse successfully.', data: inventoryItem });
+
+    res.status(201).json({
+      message: 'Product added to warehouse successfully.',
+      data: inventoryItem,
+    });
   } catch (error) {
     console.error('Error adding product to warehouse:', error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // Remove Product from Warehouse
 exports.removeProductFromWarehouse = async (req, res) => {
