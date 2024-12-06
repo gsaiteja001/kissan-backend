@@ -3,11 +3,11 @@ const Warehouse = require('../models/warehouse');
 const { haversineDistance } = require('../utils/distance');
 
 /**
- * Retrieves the coordinates of warehouses within the "area of interest" based on the user's location.
+ * Retrieves the warehouseIds of warehouses within the "area of interest" based on the user's location.
  * 
  * @param {Number} userLat - User's latitude.
  * @param {Number} userLong - User's longitude.
- * @returns {Array} - Array of warehouse coordinates [ [lon, lat], ... ].
+ * @returns {Array} - Array of warehouseIds.
  */
 const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
   try {
@@ -23,7 +23,7 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
         },
       },
       {
-        $sort: { distanceToUser: 1 }, // Ensure sorting by distance
+        $sort: { distanceToUser: 1 }, 
       },
     ]);
 
@@ -94,7 +94,7 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
     // Else, include warehouses between D1 and outerRadius
     if (outerRadius <= D1 + 1) { // Adding 1 meter as a small epsilon
       // No "area of interest"; include only W1
-      return [W1.location.coordinates];
+      return [W1.warehouseId];
     }
 
     // Step 5: Retrieve all warehouses within the "area of interest"
@@ -116,17 +116,18 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
       {
         $project: {
           _id: 0,
-          location: 1,
+          warehouseId: 1,
           warehouseName: 1,
+          location: 1,
           // Include other fields if necessary
         },
       },
     ]);
 
-    // Step 6: Extract coordinates from the result
-    const warehouseCoordinates = warehousesInArea.map(wh => wh.location.coordinates);
+    // Step 6: Extract warehouseIds from the result
+    const warehouseIds = warehousesInArea.map(wh => wh.warehouseId);
 
-    return warehouseCoordinates;
+    return warehouseIds;
   } catch (error) {
     console.error('Error in getWarehousesInAreaOfInterest:', error);
     throw error; // Propagate the error to be handled upstream
