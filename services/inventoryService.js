@@ -126,43 +126,62 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
 
   let product;
 
+  // Check if product exists by productId
   if (productData.productId) {
-    // Attempt to find existing product
     product = await Product.findOne({ productId: productData.productId });
+
     if (!product) {
-      // Create a new product since it doesn't exist
+      // Create new product if it doesn't exist
       product = new Product(productData);
-      await product.save();
+    } else {
+      // Update existing product details
+      Object.assign(product, productData);
+
+      // Update stock quantities for existing variants
+      product.variants.forEach((variant) => {
+        const incomingVariant = productData.variants.find(v => v.sku === variant.sku);
+        if (incomingVariant) {
+          variant.stockQuantity += incomingVariant.stockQuantity || 0;
+          variant.images = incomingVariant.images || variant.images;
+        }
+      });
     }
   } else {
-    // Create a new product without a specified productId
+    // If no productId, create a completely new product
     product = new Product(productData);
-    await product.save();
   }
 
-  // Find or create inventory item using warehouseId and productId
+  // Save the product with updated/created data
+  await product.save();
+
+  // Update or create the inventory item
   let inventoryItem = await InventoryItem.findOne({
-    warehouseId: warehouseId,
+    warehouseId,
     productId: product.productId,
   });
 
   if (inventoryItem) {
-    // Update existing inventory item
+    // Update existing inventory stock
     inventoryItem.stockQuantity += quantity;
     inventoryItem.lastUpdated = Date.now();
   } else {
-    // Create a new inventory item
+    // Create new inventory item
     inventoryItem = new InventoryItem({
-      warehouseId: warehouseId, // Use warehouseId for queries
-      productId: product.productId, // Use productId for queries
+      warehouseId,
+      productId: product.productId,
       stockQuantity: quantity,
     });
   }
 
+  // Save the inventory item
   await inventoryItem.save();
+
+  // Update total stock quantity in the product
+  await product.updateStockQuantity();
 
   return inventoryItem;
 }
+
 
 
 /**
