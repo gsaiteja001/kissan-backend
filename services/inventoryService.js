@@ -5,7 +5,6 @@ const Product = require('../modal/product');
 const InventoryItem = require('../modal/InventoryItem');
 
 
-
 /**
  * Adds stock to a specific product in a warehouse.
  * @param {String} warehouseId - The ID of the warehouse.
@@ -332,6 +331,7 @@ async function getAllWarehousesWithInventory() {
 
 /**
  * Retrieves unique productIds from the InventoryItem collection based on provided warehouseIds.
+ * Implements caching to optimize performance.
  * 
  * @param {Array} warehouseIds - Array of warehouseId strings.
  * @returns {Array} - Array of unique productId strings.
@@ -340,6 +340,15 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
   try {
     if (!Array.isArray(warehouseIds) || warehouseIds.length === 0) {
       throw new Error('Invalid warehouseIds provided.');
+    }
+
+    // Create a unique cache key based on warehouseIds
+    const cacheKey = `productIds:${warehouseIds.sort().join(',')}`;
+
+    // Check if productIds are cached
+    const cachedProductIds = await getAsync(cacheKey);
+    if (cachedProductIds) {
+      return JSON.parse(cachedProductIds);
     }
 
     // Aggregate to get unique productIds from the specified warehouses
@@ -353,7 +362,12 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
       return [];
     }
 
-    return products[0].uniqueProductIds;
+    const productIds = products[0].uniqueProductIds;
+
+    // Cache the productIds for 10 minutes (600 seconds)
+    await setAsync(cacheKey, 600, JSON.stringify(productIds));
+
+    return productIds;
   } catch (error) {
     console.error('Error in getProductIdsFromWarehouses:', error);
     throw error;
