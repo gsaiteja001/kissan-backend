@@ -1,5 +1,5 @@
 
-const Warehouse = require('../models/warehouse');
+const Warehouse = require('../modal/warehouse');
 const { haversineDistance } = require('../utils/distance');
 
 /**
