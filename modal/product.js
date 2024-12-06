@@ -1,9 +1,9 @@
-// models/Product.js
 
 const mongoose = require('mongoose'); 
-const InventoryItem = require('./InventoryItem');
-const LocalizedStringSchema = require('./LocalizedString');
+const InventoryItem = require('./InventoryItem'); // Ensure this model is appropriately defined
+const LocalizedStringSchema = require('./LocalizedString'); 
 
+// Review Schema
 const ReviewSchema = new mongoose.Schema(
   {
     user: {
@@ -30,6 +30,104 @@ const ReviewSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Variant Schema
+const VariantSchema = new mongoose.Schema(
+  {
+    variantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: () => new mongoose.Types.ObjectId(),
+    },
+    size: {
+      type: String,
+      required: true,
+      trim: true,
+      // enum: ['500 ml', '1 liter', '2 liters', '1 kg', '5 kg', '20 kg']
+    },
+    sku: {
+      type: String,
+      unique: true,
+      required: true,
+      trim: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: [0, 'Price cannot be negative'],
+    },
+    finalPrice: {
+      type: Number,
+      min: [0, 'Final price cannot be negative'],
+    },
+    stockQuantity: {
+      type: Number,
+      default: 0,
+      min: [0, 'Stock quantity cannot be negative'],
+    },
+    discount: {
+      amount: {
+        type: Number,
+        min: [0, 'Discount amount cannot be negative'],
+        default: 0,
+      },
+      discountType: {
+        type: String,
+        enum: ['Amount', 'Percentage'],
+        default: 'Amount',
+      },
+      startDate: {
+        type: Date,
+      },
+      endDate: {
+        type: Date,
+      },
+    },
+    images: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    weight: {
+      type: Number,
+      min: [0, 'Weight cannot be negative'],
+    },
+    dimensions: {
+      length: { type: Number, min: [0, 'Length cannot be negative'] },
+      width: { type: Number, min: [0, 'Width cannot be negative'] },
+      height: { type: Number, min: [0, 'Height cannot be negative'] },
+    },
+    // Add other variant-specific fields as needed
+  },
+  { timestamps: true }
+);
+
+// Pre-save middleware to calculate finalPrice for variants
+VariantSchema.pre('save', function (next) {
+  const now = new Date();
+  const discount = this.discount;
+  let finalPrice = this.price;
+
+  // Check if discount is applicable
+  const isDiscountValid =
+    discount &&
+    discount.amount > 0 &&
+    (!discount.startDate || discount.startDate <= now) &&
+    (!discount.endDate || discount.endDate >= now);
+
+  if (isDiscountValid) {
+    if (discount.discountType === 'Percentage') {
+      finalPrice = this.price - (this.price * discount.amount) / 100;
+    } else if (discount.discountType === 'Amount') {
+      finalPrice = this.price - discount.amount;
+    }
+  }
+
+  this.finalPrice = finalPrice > 0 ? finalPrice : 0;
+
+  next();
+});
+
+// Product Schema
 const ProductSchema = new mongoose.Schema(
   {
     productId: {
@@ -60,58 +158,28 @@ const ProductSchema = new mongoose.Schema(
     tags: {
       type: [String],
       required: false,
+      trim: true,
     },
     description: {
       type: LocalizedStringSchema,
       trim: true,
     },
-    price: {
-      type: Number,
-      required: true,
-      min: [0, 'Price cannot be negative'],
-    },
-    finalPrice: {
-      type: Number,
-      min: [0, 'Final price cannot be negative'],
-    },
-    discount: {
-      amount: {
-        type: Number,
-        min: [0, 'Discount amount cannot be negative'],
-        default: 0,
-      },
-      discountType: {
-        type: String,
-        enum: ['Amount', 'Percentage'],
-        default: 'Amount',
-      },
-      startDate: {
-        type: Date,
-      },
-      endDate: {
-        type: Date,
-      },
-    },
     manufacturer: {
       type: String,
       trim: true,
     },
-    sku: {
-      type: String,
-      unique: true,
-      trim: true,
-    },
-    stockQuantity: {
-      type: Number,
-      default: 0,
-      min: [0, 'Stock quantity cannot be negative'],
-    },
+    // Add other product-level fields as needed
+
+    // Embedded Variants Array
+    variants: [VariantSchema], // Array of VariantSchema
+
     images: [
       {
         type: String,
         trim: true,
       },
     ],
+    // Additional fields that are not variant-specific
     weight: {
       type: Number,
       min: [0, 'Weight cannot be negative'],
@@ -193,11 +261,16 @@ const ProductSchema = new mongoose.Schema(
       enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'],
       required: false,
     },
+    totalStock: { // Aggregated stock across all variants
+      type: Number,
+      default: 0,
+      min: [0, 'Total stock cannot be negative'],
+    },
   },
   { timestamps: true }
 );
 
-// Add virtual field for inventory items
+// Virtual field for inventory items
 ProductSchema.virtual('inventoryItems', {
   ref: 'InventoryItem',
   localField: '_id',
@@ -208,40 +281,19 @@ ProductSchema.virtual('inventoryItems', {
 ProductSchema.set('toObject', { virtuals: true });
 ProductSchema.set('toJSON', { virtuals: true });
 
-// Middleware to update total stock quantity in Product
+// Method to update total stock quantity in Product
 ProductSchema.methods.updateTotalStock = async function() {
-  const result = await InventoryItem.aggregate([
-    { $match: { productId: this.productId } },
-    { $group: { _id: null, total: { $sum: "$stockQuantity" } } }
-  ]);
-
-  this.totalStock = result[0]?.total || 0;
-  await this.save();
+  // Aggregates stockQuantity from all variants
+  const total = this.variants.reduce((sum, variant) => sum + (variant.stockQuantity || 0), 0);
+  this.totalStock = total;
+  return this.save();
 }
 
-// Pre-save middleware to calculate finalPrice
+// Pre-save middleware to calculate finalPrice for the main product if needed
+// (Optional: If the main product also has pricing separate from variants)
 ProductSchema.pre('save', function (next) {
-  const now = new Date();
-  const discount = this.discount;
-  let finalPrice = this.price;
-
-  // Check if discount is applicable
-  const isDiscountValid =
-    discount &&
-    discount.amount > 0 &&
-    (!discount.startDate || discount.startDate <= now) &&
-    (!discount.endDate || discount.endDate >= now);
-
-  if (isDiscountValid) {
-    if (discount.discountType === 'Percentage') {
-      finalPrice = this.price - (this.price * discount.amount) / 100;
-    } else if (discount.discountType === 'Amount') {
-      finalPrice = this.price - discount.amount;
-    }
-  }
-
-  this.finalPrice = finalPrice > 0 ? finalPrice : 0;
-
+  // Example logic if the main product has its own pricing
+  // Otherwise, this can be removed if all pricing is handled within variants
   next();
 });
 
@@ -257,5 +309,72 @@ ProductSchema.pre('save', function (next) {
   }
   next();
 });
+
+// Instance Methods to Manage Variants
+
+/**
+ * Adds a new variant to the product.
+ * @param {Object} variantData - Data for the new variant.
+ * @returns {Promise} - Resolves to the updated product.
+ */
+ProductSchema.methods.addVariant = function(variantData) {
+  this.variants.push(variantData);
+  return this.save();
+};
+
+/**
+ * Updates an existing variant.
+ * @param {String} variantId - The ID of the variant to update.
+ * @param {Object} updatedData - The updated data for the variant.
+ * @returns {Promise} - Resolves to the updated product.
+ */
+ProductSchema.methods.updateVariant = function(variantId, updatedData) {
+  const variant = this.variants.id(variantId);
+  if (variant) {
+    Object.assign(variant, updatedData);
+    return this.save();
+  }
+  throw new Error('Variant not found');
+};
+
+/**
+ * Removes a variant from the product.
+ * @param {String} variantId - The ID of the variant to remove.
+ * @returns {Promise} - Resolves to the updated product.
+ */
+ProductSchema.methods.removeVariant = function(variantId) {
+  const variant = this.variants.id(variantId);
+  if (variant) {
+    variant.remove();
+    return this.save();
+  }
+  throw new Error('Variant not found');
+};
+
+// Static Methods (Optional)
+
+// Example: Find a product by SKU across all variants
+ProductSchema.statics.findBySKU = function(sku) {
+  return this.findOne({ 'variants.sku': sku });
+};
+
+// Example: Update stock by SKU
+ProductSchema.statics.updateStockBySKU = async function(sku, quantityChange) {
+  const product = await this.findOne({ 'variants.sku': sku });
+  if (!product) throw new Error('Product with given SKU not found');
+
+  const variant = product.variants.find(v => v.sku === sku);
+  if (!variant) throw new Error('Variant with given SKU not found');
+
+  variant.stockQuantity += quantityChange;
+  if (variant.stockQuantity < 0) variant.stockQuantity = 0;
+
+  await product.updateTotalStock();
+  return product;
+};
+
+// Indexes for Optimization
+ProductSchema.index({ 'variants.sku': 1 }, { unique: true }); // Ensure SKU uniqueness across all variants
+ProductSchema.index({ productId: 1 }); 
 
 module.exports = mongoose.model('Product', ProductSchema);
