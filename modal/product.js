@@ -1,6 +1,7 @@
+// models/Product.js
 
 const mongoose = require('mongoose'); 
-const InventoryItem = require('./InventoryItem'); // Ensure this model is appropriately defined
+const InventoryItem = require('./InventoryItem');
 const LocalizedStringSchema = require('./LocalizedString'); 
 
 // Review Schema
@@ -261,10 +262,14 @@ const ProductSchema = new mongoose.Schema(
       enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'],
       required: false,
     },
-    totalStock: { // Aggregated stock across all variants
+    stockQuantity: { // Aggregated stock across all variants
       type: Number,
       default: 0,
       min: [0, 'Total stock cannot be negative'],
+    },
+    archived: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
@@ -282,20 +287,12 @@ ProductSchema.set('toObject', { virtuals: true });
 ProductSchema.set('toJSON', { virtuals: true });
 
 // Method to update total stock quantity in Product
-ProductSchema.methods.updateTotalStock = async function() {
+ProductSchema.methods.updateStockQuantity = async function() {
   // Aggregates stockQuantity from all variants
   const total = this.variants.reduce((sum, variant) => sum + (variant.stockQuantity || 0), 0);
-  this.totalStock = total;
+  this.stockQuantity = total;
   return this.save();
 }
-
-// Pre-save middleware to calculate finalPrice for the main product if needed
-// (Optional: If the main product also has pricing separate from variants)
-ProductSchema.pre('save', function (next) {
-  // Example logic if the main product has its own pricing
-  // Otherwise, this can be removed if all pricing is handled within variants
-  next();
-});
 
 // Pre-save middleware to calculate averageRating and reviewCount
 ProductSchema.pre('save', function (next) {
@@ -319,7 +316,7 @@ ProductSchema.pre('save', function (next) {
  */
 ProductSchema.methods.addVariant = function(variantData) {
   this.variants.push(variantData);
-  return this.save();
+  return this.save().then(product => product.updateStockQuantity());
 };
 
 /**
@@ -332,7 +329,7 @@ ProductSchema.methods.updateVariant = function(variantId, updatedData) {
   const variant = this.variants.id(variantId);
   if (variant) {
     Object.assign(variant, updatedData);
-    return this.save();
+    return this.save().then(product => product.updateStockQuantity());
   }
   throw new Error('Variant not found');
 };
@@ -346,21 +343,30 @@ ProductSchema.methods.removeVariant = function(variantId) {
   const variant = this.variants.id(variantId);
   if (variant) {
     variant.remove();
-    return this.save();
+    return this.save().then(product => product.updateStockQuantity());
   }
   throw new Error('Variant not found');
 };
 
 // Static Methods (Optional)
 
-// Example: Find a product by SKU across all variants
+/**
+ * Finds a product by SKU across all variants.
+ * @param {String} sku - The SKU to search for.
+ * @returns {Promise} - Resolves to the found product or null.
+ */
 ProductSchema.statics.findBySKU = function(sku) {
-  return this.findOne({ 'variants.sku': sku });
+  return this.findOne({ 'variants.sku': sku, archived: { $ne: true } });
 };
 
-// Example: Update stock by SKU
+/**
+ * Updates stock by SKU.
+ * @param {String} sku - The SKU of the variant.
+ * @param {Number} quantityChange - The change in quantity (positive or negative).
+ * @returns {Promise} - Resolves to the updated product.
+ */
 ProductSchema.statics.updateStockBySKU = async function(sku, quantityChange) {
-  const product = await this.findOne({ 'variants.sku': sku });
+  const product = await this.findOne({ 'variants.sku': sku, archived: { $ne: true } });
   if (!product) throw new Error('Product with given SKU not found');
 
   const variant = product.variants.find(v => v.sku === sku);
@@ -369,12 +375,13 @@ ProductSchema.statics.updateStockBySKU = async function(sku, quantityChange) {
   variant.stockQuantity += quantityChange;
   if (variant.stockQuantity < 0) variant.stockQuantity = 0;
 
-  await product.updateTotalStock();
+  await product.updateStockQuantity();
   return product;
 };
 
 // Indexes for Optimization
-ProductSchema.index({ 'variants.sku': 1 }, { unique: true }); // Ensure SKU uniqueness across all variants
+ProductSchema.index({ 'variants.sku': 1 }, { unique: true }); 
 ProductSchema.index({ productId: 1 }); 
+ProductSchema.index({ archived: 1 });
 
 module.exports = mongoose.model('Product', ProductSchema);
