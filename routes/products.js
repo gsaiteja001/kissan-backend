@@ -108,31 +108,31 @@ router.post('/get-product-ids', async (req, res) => {
  *          - lat: Number (required) - User's latitude
  *          - long: Number (required) - User's longitude
  */
-router.get('/area-of-interest', async (req, res) => {
-  try {
-    const { lat, long } = req.query;
+// router.get('/area-of-interest', async (req, res) => {
+//   try {
+//     const { lat, long } = req.query;
 
-    // Input validation
-    if (!lat || !long) {
-      return res.status(400).json({ message: 'Latitude and Longitude are required.' });
-    }
+//     // Input validation
+//     if (!lat || !long) {
+//       return res.status(400).json({ message: 'Latitude and Longitude are required.' });
+//     }
 
-    const userLat = parseFloat(lat);
-    const userLong = parseFloat(long);
+//     const userLat = parseFloat(lat);
+//     const userLong = parseFloat(long);
 
-    if (isNaN(userLat) || isNaN(userLong)) {
-      return res.status(400).json({ message: 'Invalid latitude or longitude.' });
-    }
+//     if (isNaN(userLat) || isNaN(userLong)) {
+//       return res.status(400).json({ message: 'Invalid latitude or longitude.' });
+//     }
 
-    // Get warehouses in the area of interest
-    const warehouses = await getWarehousesInAreaOfInterest(userLat, userLong);
+//     // Get warehouses in the area of interest
+//     const warehouses = await getWarehousesInAreaOfInterest(userLat, userLong);
 
-    return res.status(200).json({ warehouses });
-  } catch (error) {
-    console.error('Error in /warehouses/area-of-interest:', error);
-    return res.status(500).json({ message: 'Internal server error.' });
-  }
-});
+//     return res.status(200).json({ warehouses });
+//   } catch (error) {
+//     console.error('Error in /warehouses/area-of-interest:', error);
+//     return res.status(500).json({ message: 'Internal server error.' });
+//   }
+// });
 
 
 module.exports = router;
