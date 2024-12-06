@@ -17,7 +17,6 @@ const {
   moveStock,
 } = require('../controllers/warehouseController');
 
-const getWarehousesInAreaOfInterest = require('../controllers/nearBywarehouse');
 
 const inventoryController = require('../controllers/inventoryController');
 
