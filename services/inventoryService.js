@@ -4,6 +4,7 @@ const Warehouse = require('../modal/warehouse');
 const Product = require('../modal/product');
 const InventoryItem = require('../modal/InventoryItem');
 
+const { getAsync, setAsync } = require('./redisClient');
 
 /**
  * Adds stock to a specific product in a warehouse.
@@ -343,11 +344,13 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
     }
 
     // Create a unique cache key based on warehouseIds
-    const cacheKey = `productIds:${warehouseIds.sort().join(',')}`;
+    const sortedWarehouseIds = warehouseIds.slice().sort(); // Clone and sort to ensure consistency
+    const cacheKey = `productIds:${sortedWarehouseIds.join(',')}`;
 
     // Check if productIds are cached
     const cachedProductIds = await getAsync(cacheKey);
     if (cachedProductIds) {
+      console.log('Retrieved productIds from cache.');
       return JSON.parse(cachedProductIds);
     }
 
@@ -366,6 +369,7 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
 
     // Cache the productIds for 10 minutes (600 seconds)
     await setAsync(cacheKey, 600, JSON.stringify(productIds));
+    console.log('Cached productIds in Redis.');
 
     return productIds;
   } catch (error) {
@@ -373,7 +377,6 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
     throw error;
   }
 };
-
 
 /**
  * Adds multiple products to a warehouse with respective quantities.
