@@ -1,9 +1,8 @@
 // routes/warehouses.js
 const express = require('express');
 const router = express.Router();
-const Warehouse = require('../models/Warehouse'); // Adjust the path as necessary
+const Warehouse = require('../modal/warehouse'); // Adjust the path as necessary
 const logger = require('../utils/logger'); // Ensure you have a logger set up
-const authenticate = require('../middleware/authenticate'); // Optional: Import authentication middleware
 
 /**
  * @route   POST /api/warehouses/migrate-coordinates
@@ -11,10 +10,7 @@ const authenticate = require('../middleware/authenticate'); // Optional: Import 
  * @access  Protected (e.g., Admins only)
  * @returns {Object} - Summary of migration results
  */
-router.post('/migrate-coordinates', 
-  // Optional: Apply authentication middleware to protect the route
-  authenticate, 
-  async (req, res) => {
+router.post('/migrate-coordinates', async (req, res) => {
     try {
       logger.info('Migration started: Coordinating to Location.');
 
