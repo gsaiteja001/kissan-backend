@@ -3,7 +3,7 @@
 const mongoose = require('mongoose');
 const Product = require('../modal/product');
 const InventoryItem = require('../modal/InventoryItem');
-
+const Sale = require('../modal/Sale');
 /**
  * @desc    Create a new product
  * @route   POST /api/products
@@ -12,6 +12,14 @@ const InventoryItem = require('../modal/InventoryItem');
 exports.createProduct = async (req, res, next) => {
   try {
     const productData = req.body;
+
+    // Optional: Validate that variants are provided
+    if (!productData.variants || !Array.isArray(productData.variants) || productData.variants.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one variant is required.',
+      });
+    }
 
     const newProduct = new Product(productData);
 
@@ -37,10 +45,10 @@ exports.createProduct = async (req, res, next) => {
  */
 exports.getAllProducts = async (req, res, next) => {
   try {
-    const { category, tag, priceMin, priceMax, search } = req.query;
+    const { category, tag, priceMin, priceMax, search, sku } = req.query;
 
     // Build query
-    const query = {};
+    const query = { archived: { $ne: true } }; // Exclude archived products
 
     if (category) {
       query.category = category;
@@ -50,19 +58,34 @@ exports.getAllProducts = async (req, res, next) => {
       query.tags = tag;
     }
 
+    if (sku) {
+      // Filter products that have at least one variant with the specified SKU
+      query['variants.sku'] = sku;
+    }
+
     if (priceMin || priceMax) {
-      query.price = {};
-      if (priceMin) query.price.$gte = Number(priceMin);
-      if (priceMax) query.price.$lte = Number(priceMax);
+      query.variants = {
+        $elemMatch: {},
+      };
+      if (priceMin) {
+        query.variants.$elemMatch.price = { ...query.variants.$elemMatch.price, $gte: Number(priceMin) };
+      }
+      if (priceMax) {
+        query.variants.$elemMatch.price = { ...query.variants.$elemMatch.price, $lte: Number(priceMax) };
+      }
     }
 
     if (search) {
+      // Assuming 'name' is a localized string, adjust the language as needed (e.g., 'en')
       query['name.en'] = { $regex: search, $options: 'i' }; // Case-insensitive search
     }
 
     const products = await Product.find(query)
-      .populate('reviews.user') // Assuming 'user' is a reference; adjust if it's just a string
-      .populate('inventoryItems.warehouse', 'warehouseName address')
+      .populate({
+        path: 'inventoryItems',
+        populate: { path: 'warehouse', select: 'warehouseName address' },
+      })
+      // Removed populate('reviews.user') as 'user' is a string
       .exec();
 
     res.status(200).json({
@@ -84,19 +107,20 @@ exports.getProductById = async (req, res, next) => {
   try {
     const productId = req.params.id;
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
+    if (!mongoose.Types.ObjectId.isValid(productId) && !/^[A-Za-z0-9\-]+$/.test(productId)) { 
       return res.status(400).json({
         success: false,
         message: 'Invalid product ID.',
       });
     }
 
-    const product = await Product.findById(productId)
+    // Assuming productId is a unique string, not the MongoDB _id
+    const product = await Product.findOne({ productId: productId, archived: { $ne: true } })
       .populate({
         path: 'inventoryItems',
         populate: { path: 'warehouse', select: 'warehouseName address' },
       })
-      .populate('reviews.user') // Assuming 'user' is a reference; adjust if it's just a string
+      // Removed populate('reviews.user') as 'user' is a string
       .exec();
 
     if (!product) {
@@ -125,16 +149,34 @@ exports.updateProduct = async (req, res, next) => {
     const productId = req.params.id;
     const updateData = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
+    // Validate productId (assuming it's a unique string)
+    if (!mongoose.Types.ObjectId.isValid(productId) && !/^[A-Za-z0-9\-]+$/.test(productId)) { 
       return res.status(400).json({
         success: false,
         message: 'Invalid product ID.',
       });
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(productId, updateData, {
-      new: true,
-      runValidators: true,
+    // If variants are being updated, handle them appropriately
+    // For example, prevent direct updates to variants array and use instance methods instead
+    if (updateData.variants) {
+      return res.status(400).json({
+        success: false,
+        message: 'Use dedicated endpoints to manage product variants.',
+      });
+    }
+
+    // Update other product fields
+    const updatedProduct = await Product.findOneAndUpdate(
+      { productId: productId, archived: { $ne: true } },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).populate({
+      path: 'inventoryItems',
+      populate: { path: 'warehouse', select: 'warehouseName address' },
     });
 
     if (!updatedProduct) {
@@ -167,14 +209,15 @@ exports.deleteProduct = async (req, res, next) => {
   try {
     const productId = req.params.id;
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
+    // Validate productId (assuming it's a unique string)
+    if (!mongoose.Types.ObjectId.isValid(productId) && !/^[A-Za-z0-9\-]+$/.test(productId)) { 
       return res.status(400).json({
         success: false,
         message: 'Invalid product ID.',
       });
     }
 
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({ productId: productId, archived: { $ne: true } });
 
     if (!product) {
       return res.status(404).json({
@@ -206,14 +249,37 @@ exports.addReview = async (req, res, next) => {
     const productId = req.params.id;
     const { user, rating, comment } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
+    // Validate productId (assuming it's a unique string)
+    if (!mongoose.Types.ObjectId.isValid(productId) && !/^[A-Za-z0-9\-]+$/.test(productId)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid product ID.',
       });
     }
 
-    const product = await Product.findById(productId);
+    // Basic validation for review fields
+    if (!user || typeof user !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'User is required and must be a string.',
+      });
+    }
+
+    if (rating === undefined || typeof rating !== 'number' || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating is required and must be between 1 and 5.',
+      });
+    }
+
+    if (comment && comment.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment cannot exceed 500 characters.',
+      });
+    }
+
+    const product = await Product.findOne({ productId: productId, archived: { $ne: true } });
 
     if (!product) {
       return res.status(404).json({
@@ -249,14 +315,28 @@ exports.getProductInventory = async (req, res, next) => {
   try {
     const productId = req.params.id;
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
+    // Validate productId (assuming it's a unique string)
+    if (!mongoose.Types.ObjectId.isValid(productId) && !/^[A-Za-z0-9\-]+$/.test(productId)) { 
       return res.status(400).json({
         success: false,
         message: 'Invalid product ID.',
       });
     }
 
-    const inventoryItems = await InventoryItem.find({ product: productId })
+    // Find the product first to retrieve all variant SKUs or variantIds
+    const product = await Product.findOne({ productId: productId, archived: { $ne: true } }).exec();
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found.',
+      });
+    }
+
+    // Assuming InventoryItem references variants via 'sku'
+    const variantSKUs = product.variants.map(variant => variant.sku);
+
+    const inventoryItems = await InventoryItem.find({ sku: { $in: variantSKUs } })
       .populate('warehouse', 'warehouseName address')
       .exec();
 
@@ -270,7 +350,6 @@ exports.getProductInventory = async (req, res, next) => {
   }
 };
 
-
 /**
  * @desc    Get top-selling products across all warehouses
  * @route   GET /api/products/top-selling
@@ -281,11 +360,21 @@ exports.getTopSellingProducts = async (req, res, next) => {
     const { top = 5 } = req.query;
 
     const salesData = await Sale.aggregate([
+      // Lookup to get the productId from the Product model via variant's SKU
+      {
+        $lookup: {
+          from: 'products', // MongoDB collection name is lowercase and plural
+          localField: 'sku', // Assuming Sale has 'sku' field referencing Variant's SKU
+          foreignField: 'variants.sku',
+          as: 'productDetails',
+        },
+      },
+      {
+        $unwind: '$productDetails',
+      },
       {
         $group: {
-          _id: {
-            product: '$product',
-          },
+          _id: '$productDetails.productId', // Group by productId
           totalQuantitySold: { $sum: '$quantitySold' },
         },
       },
@@ -298,8 +387,8 @@ exports.getTopSellingProducts = async (req, res, next) => {
       {
         $lookup: {
           from: 'products',
-          localField: '_id.product',
-          foreignField: '_id',
+          localField: '_id',
+          foreignField: 'productId',
           as: 'product',
         },
       },
@@ -308,8 +397,9 @@ exports.getTopSellingProducts = async (req, res, next) => {
       },
       {
         $project: {
-          productId: '$product.productId',
-          name: '$product.name.en',
+          _id: 0,
+          productId: '$_id',
+          name: '$product.name.en', 
           category: '$product.category',
           totalQuantitySold: 1,
         },
