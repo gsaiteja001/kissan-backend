@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const translateProduct = require('../utils/translateProduct');
 const Product = require('../modal/product'); 
-const { getProductIdsFromWarehouses } = require('../controllers/nearBywarehouse');
+const { getProductIdsFromWarehouses } = require('../services/inventoryService');
 
 
 // Similar Products Route
