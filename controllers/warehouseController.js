@@ -437,9 +437,11 @@ exports.updateInventoryItem = async (req, res, next) => {
     next(error);
   }
 };
+
+
 /**
  * Stock In function
- * Adds stock to specific products in a warehouse and links to a Purchase
+ * Adds stock to specific products (and variants) in a warehouse and links to a Purchase
  */
 exports.stockIn = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -469,8 +471,9 @@ exports.stockIn = async (req, res, next) => {
 
     // Iterate over each product in the transaction
     for (const prod of products) {
-      const { productId, quantity, unit } = prod;
+      const { productId, variantId, quantity, unit, notes: productNotes } = prod;
 
+      // Validate each product entry
       if (!productId || quantity === undefined) {
         throw new Error('Each product must have a productId and quantity.');
       }
@@ -485,19 +488,54 @@ exports.stockIn = async (req, res, next) => {
         throw new Error(`Product with productId ${productId} not found.`);
       }
 
-      // Find or Create the InventoryItem
-      let inventoryItem = await InventoryItem.findOne({ warehouseId, productId }).session(session);
-      if (!inventoryItem) {
-        inventoryItem = new InventoryItem({ warehouseId, productId, stockQuantity: 0, reorderLevel: 10 });
+      // Initialize variables for stock update
+      let variant = null;
+
+      if (variantId) {
+        // If variantId is provided, find the specific variant
+        variant = product.variants.find(v => v.variantId === variantId);
+        if (!variant) {
+          throw new Error(`Variant with variantId ${variantId} not found for productId ${productId}.`);
+        }
+
+        // Update the variant's stockQuantity
+        variant.stockQuantity += quantity;
+        if (variant.stockQuantity < 0) {
+          throw new Error(`Stock quantity for variantId ${variantId} cannot be negative.`);
+        }
+      } else {
+        // If no variantId, update the product's stockQuantity directly
+        // Note: This assumes that products without variants track stock at the product level
+        product.stockQuantity += quantity;
+        if (product.stockQuantity < 0) {
+          throw new Error(`Stock quantity for productId ${productId} cannot be negative.`);
+        }
       }
 
-      // Update the InventoryItem
-      inventoryItem.stockQuantity += quantity;
-      inventoryItem.lastUpdated = new Date();
-      await inventoryItem.save({ session });
+      // Save the product (which includes the updated variant if applicable)
+      await product.save({ session });
 
-      // Update the Product's total stock
-      await product.updateTotalStock();
+      // Update InventoryItem's stockQuantity to match the product's total stock
+      // This ensures consistency between InventoryItem and Product's aggregated stock
+      let inventoryItem = await InventoryItem.findOne({ warehouseId, productId }).session(session);
+      if (!inventoryItem) {
+        // If InventoryItem doesn't exist, create a new one with initial stockQuantity
+        inventoryItem = new InventoryItem({
+          warehouseId,
+          productId,
+          stockQuantity: product.stockQuantity, // Set to product's total stock
+          reorderLevel: 10, // Or retrieve from warehouse/product as needed
+        });
+      } else {
+        // If InventoryItem exists, update its stockQuantity to match product's stockQuantity
+        inventoryItem.stockQuantity = product.stockQuantity;
+      }
+
+      // Update lastUpdated timestamp
+      inventoryItem.lastUpdated = new Date();
+
+      // Save the InventoryItem
+      await inventoryItem.save({ session });
     }
 
     // Create a StockTransaction for Stock In
@@ -506,8 +544,10 @@ exports.stockIn = async (req, res, next) => {
       warehouseId,
       products: products.map((prod) => ({
         productId: prod.productId,
+        variantId: prod.variantId || null, // Include variantId if available
         quantity: prod.quantity,
         unit: prod.unit || 'kg',
+        notes: prod.notes || '',
       })),
       performedBy: performedBy || 'System', // Replace with actual user if available
       notes: notes || '',
