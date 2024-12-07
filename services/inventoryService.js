@@ -114,7 +114,7 @@ const updateWarehouseOccupancy = async (warehouseId) => {
 };
 
 // Add Product to Warehouse
-async function addProductToWarehouse(warehouseId, productData, quantity) {
+async function addProductToWarehouse(warehouseId, productData) {
   if (!warehouseId) {
     throw new Error('Warehouse ID is required.');
   }
@@ -137,14 +137,19 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
       // Update existing product details
       Object.assign(product, productData);
 
-      // Update stock quantities for existing variants
-      product.variants.forEach((variant) => {
-        const incomingVariant = productData.variants.find(v => v.sku === variant.sku);
-        if (incomingVariant) {
-          variant.stockQuantity += incomingVariant.stockQuantity || 0;
-          variant.images = incomingVariant.images || variant.images;
-        }
-      });
+      // Update existing variants
+      if (productData.variants && Array.isArray(productData.variants)) {
+        productData.variants.forEach((incomingVariant) => {
+          const existingVariant = product.variants.find(v => v.variantId === incomingVariant.variantId);
+          if (existingVariant) {
+            // Update variant details
+            Object.assign(existingVariant, incomingVariant);
+          } else {
+            // Add new variant
+            product.variants.push(incomingVariant);
+          }
+        });
+      }
     }
   } else {
     // If no productId, create a completely new product
@@ -154,33 +159,12 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
   // Save the product with updated/created data
   await product.save();
 
-  // Update or create the inventory item
-  let inventoryItem = await InventoryItem.findOne({
-    warehouseId,
-    productId: product.productId,
-  });
+  //  Update total stock quantity in the product
+  // await product.updateStockQuantity();
 
-  if (inventoryItem) {
-    // Update existing inventory stock
-    inventoryItem.stockQuantity += quantity;
-    inventoryItem.lastUpdated = Date.now();
-  } else {
-    // Create new inventory item
-    inventoryItem = new InventoryItem({
-      warehouseId,
-      productId: product.productId,
-      stockQuantity: quantity,
-    });
-  }
-
-  // Save the inventory item
-  await inventoryItem.save();
-
-  // Update total stock quantity in the product
-  await product.updateStockQuantity();
-
-  return inventoryItem;
+  return product; 
 }
+
 
 
 
@@ -192,6 +176,7 @@ async function addProductToWarehouse(warehouseId, productData, quantity) {
  * @param {Array} products - An array of products with productId and quantity.
  * @returns {Array} - An array of updated or created inventory items.
  */
+// Add Multiple Products to Warehouse
 async function addMultipleProductsToWarehouse(warehouseId, products) { 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -216,19 +201,23 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       throw new Error(`Products not found: ${missingProducts.join(', ')}`);
     }
 
-    // Prepare bulk operations with $set to ensure required fields are set
-    const bulkOps = products.map(({ productId, quantity }) => ({
+    // Since 'quantity' is removed, we'll focus on updating product variants if needed
+    // Depending on your application logic, you might need to associate products with the warehouse
+    // For this example, we'll assume that adding a product to a warehouse involves ensuring the product is linked
+
+    // Prepare bulk operations to associate products with the warehouse
+    // If InventoryItem is used to track association without stockQuantity, adjust accordingly
+    const bulkOps = products.map(({ productId }) => ({
       updateOne: {
         filter: { warehouseId, productId },
         update: { 
-          $inc: { stockQuantity: quantity }, 
           $set: { 
             lastUpdated: new Date(),
             warehouseId,    // Ensure warehouseId is set
             productId       // Ensure productId is set
           }
         },
-        upsert: true,
+        upsert: true, // Create the association if it doesn't exist
       }
     }));
 
