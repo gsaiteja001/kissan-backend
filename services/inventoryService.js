@@ -410,9 +410,9 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
   }
 }
 
-
-
-// Remove Product from Warehouse
+/**
+ * Removes an entire product from a warehouse's inventory.
+ */
 async function removeProductFromWarehouse(warehouseId, productId) {
   // Input Validation
   if (!warehouseId || !productId) {
@@ -420,33 +420,32 @@ async function removeProductFromWarehouse(warehouseId, productId) {
   }
 
   try {
-    // Remove the inventory item associated with the warehouse and product
-    const inventoryItem = await InventoryItem.findOneAndDelete({
+    // Remove all variants associated with the product in the warehouse
+    const inventoryItems = await InventoryItem.deleteMany({
       warehouseId: warehouseId,
       productId: productId,
     });
 
-    if (!inventoryItem) {
-      throw new Error('Inventory item not found.');
+    if (inventoryItems.deletedCount === 0) {
+      throw new Error('Inventory item(s) not found.');
     }
 
     // Find the product by productId
     const product = await Product.findOne({ productId: productId });
 
     if (product) {
-      // Update the total stock quantity based on variants
+      // Update the total stock quantity based on remaining variants
       await product.updateStockQuantity();
     } else {
       console.warn(`Product with productId ${productId} not found.`);
     }
 
-    return inventoryItem;
+    return inventoryItems;
   } catch (error) {
     console.error('Error removing product from warehouse:', error);
     throw error; 
   }
 }
-
 
 
 /**
