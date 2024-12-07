@@ -38,6 +38,52 @@ exports.createProduct = async (req, res, next) => {
   }
 };
 
+
+
+
+
+exports.updateVariants = async (req, res) => {
+  const { productId } = req.params;
+  const { variants } = req.body;
+
+  try {
+    // Find the product by productId
+    const product = await Product.findOne({ productId });
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Iterate over the provided variants
+    for (const variantData of variants) {
+      const { variantId, ...updatedData } = variantData;
+
+      // Update existing variant
+      try {
+        await product.updateVariant(variantId, updatedData);
+      } catch (error) {
+        console.error(`Error updating variant ${variantId}:`, error.message);
+        return res.status(400).json({ message: `Error updating variant ${variantId}: ${error.message}` });
+      }
+    }
+
+    // Save the product after all updates
+    await product.save();
+
+    // Optionally, you can populate any necessary fields
+    const updatedProduct = await Product.findOne({ productId });
+
+    res.status(200).json({ message: 'Variants updated successfully', product: updatedProduct });
+  } catch (error) {
+    console.error('Error updating variants:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
+
 /**
  * @desc    Get all products with optional filters
  * @route   GET /api/products
