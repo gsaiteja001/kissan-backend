@@ -15,7 +15,7 @@ const productTransactionSchema = new mongoose.Schema({
     required: [true, 'Product ID is required'],
     trim: true,
   },
-  varientId: {
+  variantId: {
     type: String,
     required: [false, 'varient Id is required'],
     trim: true,
