@@ -10,6 +10,11 @@ const InventoryItemSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Product ID is required'],
     },
+    variantId: {
+      type: String,
+      required: [false, 'Variant ID is required'],
+      trim: true,
+    },
     stockQuantity: {
       type: Number,
       default: 0,
