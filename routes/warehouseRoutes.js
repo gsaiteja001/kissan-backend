@@ -247,6 +247,12 @@ router.post('/:warehouseId/products', inventoryController.addProductToWarehouse)
 // Remove Product from Warehouse
 router.delete('/:warehouseId/products/:productId', inventoryController.removeProductFromWarehouse);
 
+
+router.delete(
+  '/:warehouseId/products/:productId/variants/:variantId',
+  inventoryController.removeVariantFromWarehouse
+);
+
 // List Inventory Items for a Warehouse
 router.get('/inventory/products/:warehouseId', inventoryController.listInventoryItems);
 
