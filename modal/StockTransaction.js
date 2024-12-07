@@ -15,6 +15,11 @@ const productTransactionSchema = new mongoose.Schema({
     required: [true, 'Product ID is required'],
     trim: true,
   },
+  varientId: {
+    type: String,
+    required: [false, 'varient Id is required'],
+    trim: true,
+  },
   quantity: {
     type: Number,
     required: [true, 'Quantity is required'],
