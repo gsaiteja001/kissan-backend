@@ -30,6 +30,24 @@ exports.addProductToWarehouse = async (req, res) => {
 };
 
 // Remove Product from Warehouse
+exports.removeVariantFromWarehouse = async (req, res) => {
+  try {
+    const { warehouseId, productId, variantId } = req.params;
+
+    // Input Validation
+    if (!warehouseId || !productId || !variantId) {
+      return res.status(400).json({ message: 'warehouseId, productId, and variantId are required.' });
+    }
+
+    const inventoryItem = await inventoryService.removeVariantFromWarehouse(warehouseId, productId, variantId);
+    res.status(200).json({ message: 'Variant removed from warehouse successfully.', data: inventoryItem });
+  } catch (error) {
+    console.error('Error removing variant from warehouse:', error);
+    res.status(500).json({ message: error.message || 'Failed to remove variant from warehouse.' });
+  }
+};
+
+
 exports.removeProductFromWarehouse = async (req, res) => {
   try {
     const warehouseId = req.params.warehouseId;
