@@ -75,7 +75,7 @@ exports.getAllWarehousesWithInventory = async (req, res) => {
 exports.addMultipleProductsToWarehouse = async (req, res) => {
   try {
     const { warehouseId } = req.params;
-    const { products } = req.body; // Expecting an array of { productId, quantity }
+    const { products } = req.body; // Expecting an array of { productId, variants }
 
     if (!Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ message: 'Products array is required and cannot be empty.' });
@@ -83,11 +83,14 @@ exports.addMultipleProductsToWarehouse = async (req, res) => {
 
     // Validate each product entry
     for (const product of products) {
-      if (!product.productId || product.quantity == null) { // Allow quantity 0 if needed
-        return res.status(400).json({ message: 'Each product must have a productId and quantity.' });
+      if (!product.productId || !product.variants || !Array.isArray(product.variants)) {
+        return res.status(400).json({ message: 'Each product must have a productId and a variants array.' });
       }
-      if (typeof product.quantity !== 'number' || product.quantity <= 0) {
-        return res.status(400).json({ message: `Invalid quantity for productId ${product.productId}. Quantity must be a positive number.` });
+      // Optionally, validate each variant within the product
+      for (const variant of product.variants) {
+        if (!variant.variantId || !variant.size) {
+          return res.status(400).json({ message: 'Each variant must have a variantId and size.' });
+        }
       }
     }
 
@@ -103,6 +106,7 @@ exports.addMultipleProductsToWarehouse = async (req, res) => {
     res.status(500).json({ message: error.message || 'Failed to add products to warehouse.' });
   }
 };
+
 
 
 
