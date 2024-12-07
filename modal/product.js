@@ -35,8 +35,10 @@ const ReviewSchema = new mongoose.Schema(
 const VariantSchema = new mongoose.Schema(
   {
     variantId: {
-      type: mongoose.Schema.Types.ObjectId,
-      default: () => new mongoose.Types.ObjectId(),
+      type: String,
+      unique: true,
+      required: true,
+      trim: true,
     },
     size: {
       type: String,
