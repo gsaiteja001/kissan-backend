@@ -634,7 +634,7 @@ module.exports = {
   checkReorderLevels,
   addProductToWarehouse,
   removeProductFromWarehouse,
-  listInventoryItems,
+
   addMultipleProductsToWarehouse,
   getAllWarehousesWithInventory,
   getProductIdsFromWarehouses,
