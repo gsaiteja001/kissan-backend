@@ -36,7 +36,7 @@ router.post('/:id/reviews', addReview);
 router.get('/:id/inventory', getProductInventory);
 
 // Get top-selling products
-router.get('/top-selling', getTopSellingProducts);
+// router.get('/top-selling', getTopSellingProducts);
 
 
 router.put('/:productId/variants', updateVariants);
