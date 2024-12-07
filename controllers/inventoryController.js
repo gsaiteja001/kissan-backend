@@ -6,15 +6,14 @@ const inventoryService = require('../services/inventoryService');
 exports.addProductToWarehouse = async (req, res) => {
   try {
     const warehouseId = req.params.warehouseId;
-    const { productData, quantity } = req.body;
+    const { productData } = req.body; // Removed 'quantity'
 
-    // Validate quantity
-    if (!quantity || quantity <= 0) {
-      return res.status(400).json({ message: 'Quantity must be a positive number.' });
+    if (!productData) {
+      return res.status(400).json({ message: 'Product data is required.' });
     }
 
-    // Add product to warehouse
-    const inventoryItem = await inventoryService.addProductToWarehouse(warehouseId, productData, quantity);
+    // Add product to warehouse without handling 'quantity'
+    const inventoryItem = await inventoryService.addProductToWarehouse(warehouseId, productData);
 
     res.status(201).json({
       message: 'Product added to warehouse successfully.',
@@ -22,9 +21,10 @@ exports.addProductToWarehouse = async (req, res) => {
     });
   } catch (error) {
     console.error('Error adding product to warehouse:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message || 'Failed to add product to warehouse.' });
   }
 };
+
 
 
 
