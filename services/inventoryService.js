@@ -201,8 +201,8 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       throw new Error(`Products not found: ${missingProducts.join(', ')}`);
     }
 
-    // Since 'quantity' is removed, we'll focus on updating product variants if needed
-    // Depending on your application logic, you might need to associate products with the warehouse
+
+    // Depending on application logic, you might need to associate products with the warehouse
     // For this example, we'll assume that adding a product to a warehouse involves ensuring the product is linked
 
     // Prepare bulk operations to associate products with the warehouse
@@ -213,11 +213,11 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
         update: { 
           $set: { 
             lastUpdated: new Date(),
-            warehouseId,    // Ensure warehouseId is set
-            productId       // Ensure productId is set
+            warehouseId,    
+            productId    
           }
         },
-        upsert: true, // Create the association if it doesn't exist
+        upsert: true, 
       }
     }));
 
