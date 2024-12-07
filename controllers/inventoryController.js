@@ -2,7 +2,9 @@
 const inventoryService = require('../services/inventoryService');
 
 
-// Add Product to Warehouse
+/**
+ * Add a single product (with optional variants) to a warehouse
+ */
 exports.addProductToWarehouse = async (req, res) => {
   try {
     const warehouseId = req.params.warehouseId;
@@ -12,21 +14,20 @@ exports.addProductToWarehouse = async (req, res) => {
       return res.status(400).json({ message: 'Product data is required.' });
     }
 
-    // Add product to warehouse without handling 'quantity'
-    const inventoryItem = await inventoryService.addProductToWarehouse(warehouseId, productData);
+    // Add product to warehouse handling 'variantId' if present
+    const inventoryItems = await inventoryService.addProductToWarehouse(warehouseId, productData);
 
     res.status(201).json({
       message: 'Product added to warehouse successfully.',
-      data: inventoryItem,
+      data: inventoryItems,
     });
   } catch (error) {
     console.error('Error adding product to warehouse:', error);
-    res.status(500).json({ message: error.message || 'Failed to add product to warehouse.' });
+    res.status(500).json({
+      message: error.message || 'Failed to add product to warehouse.',
+    });
   }
 };
-
-
-
 
 // Remove Product from Warehouse
 exports.removeProductFromWarehouse = async (req, res) => {
@@ -68,9 +69,7 @@ exports.getAllWarehousesWithInventory = async (req, res) => {
 
 
 /**
- * @desc    Add multiple existing products to a warehouse with respective quantities
- * @route   POST /api/warehouses/products/multiple/:warehouseId
- * @access  Public (Adjust access as needed)
+ * Add multiple products (with optional variants) to a warehouse
  */
 exports.addMultipleProductsToWarehouse = async (req, res) => {
   try {
@@ -83,19 +82,30 @@ exports.addMultipleProductsToWarehouse = async (req, res) => {
 
     // Validate each product entry
     for (const product of products) {
-      if (!product.productId || !product.variants || !Array.isArray(product.variants)) {
-        return res.status(400).json({ message: 'Each product must have a productId and a variants array.' });
+      if (!product.productId) {
+        return res.status(400).json({ message: 'Each product must have a productId.' });
       }
-      // Optionally, validate each variant within the product
-      for (const variant of product.variants) {
-        if (!variant.variantId || !variant.size) {
-          return res.status(400).json({ message: 'Each variant must have a variantId and size.' });
+
+      if (product.variants) {
+        if (!Array.isArray(product.variants)) {
+          return res.status(400).json({ message: 'Variants must be an array.' });
+        }
+
+        for (const variant of product.variants) {
+          if (!variant.variantId || !variant.size) {
+            return res.status(400).json({
+              message: 'Each variant must have a variantId and size.',
+            });
+          }
         }
       }
     }
 
     // Call the service function to handle the logic
-    const inventoryItems = await inventoryService.addMultipleProductsToWarehouse(warehouseId, products);
+    const inventoryItems = await inventoryService.addMultipleProductsToWarehouse(
+      warehouseId,
+      products
+    );
 
     res.status(201).json({
       message: 'Products added to warehouse successfully.',
@@ -103,7 +113,9 @@ exports.addMultipleProductsToWarehouse = async (req, res) => {
     });
   } catch (error) {
     console.error('Error adding multiple products to warehouse:', error);
-    res.status(500).json({ message: error.message || 'Failed to add products to warehouse.' });
+    res.status(500).json({
+      message: error.message || 'Failed to add products to warehouse.',
+    });
   }
 };
 
