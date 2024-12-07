@@ -49,12 +49,12 @@ const VariantSchema = new mongoose.Schema(
     sku: {
       type: String,
       unique: true,
-      required: true,
+      required: false,
       trim: true,
     },
     price: {
       type: Number,
-      required: true,
+      required: false,
       min: [0, 'Price cannot be negative'],
     },
     finalPrice: {
