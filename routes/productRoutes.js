@@ -8,7 +8,9 @@ const {
   deleteProduct,
   addReview,
   getProductInventory,
+  updateVariants,
 } = require('../controllers/productController');
+
 
 const router = express.Router();
 
@@ -36,5 +38,7 @@ router.get('/:id/inventory', getProductInventory);
 // Get top-selling products
 router.get('/top-selling', getTopSellingProducts);
 
+
+router.put('/:productId/variants', updateVariants);
 
 module.exports = router;
