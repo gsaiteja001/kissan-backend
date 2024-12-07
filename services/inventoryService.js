@@ -259,26 +259,37 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
 
 // Remove Product from Warehouse
 async function removeProductFromWarehouse(warehouseId, productId) {
+  // Input Validation
   if (!warehouseId || !productId) {
     throw new Error('Both warehouseId and productId are required.');
   }
 
-  const inventoryItem = await InventoryItem.findOneAndDelete({
-    warehouseId: warehouseId,
-    productId: productId,
-  });
+  try {
+    // Remove the inventory item associated with the warehouse and product
+    const inventoryItem = await InventoryItem.findOneAndDelete({
+      warehouseId: warehouseId,
+      productId: productId,
+    });
 
-  if (!inventoryItem) {
-    throw new Error('Inventory item not found.');
+    if (!inventoryItem) {
+      throw new Error('Inventory item not found.');
+    }
+
+    // Find the product by productId
+    const product = await Product.findOne({ productId: productId });
+
+    if (product) {
+      // Update the total stock quantity based on variants
+      await product.updateStockQuantity();
+    } else {
+      console.warn(`Product with productId ${productId} not found.`);
+    }
+
+    return inventoryItem;
+  } catch (error) {
+    console.error('Error removing product from warehouse:', error);
+    throw error; 
   }
-
-  // Update total stock in Product
-  const product = await Product.findOne({ productId });
-  if (product) {
-    await product.updateTotalStock();
-  }
-
-  return inventoryItem;
 }
 
 async function listInventoryItems(warehouseId) {
