@@ -447,6 +447,58 @@ async function removeProductFromWarehouse(warehouseId, productId) {
   }
 }
 
+
+
+/**
+ * Removes a specific variant from a warehouse's inventory.
+ */
+async function removeVariantFromWarehouse(warehouseId, productId, variantId) {
+  // Input Validation
+  if (!warehouseId || !productId || !variantId) {
+    throw new Error('warehouseId, productId, and variantId are required.');
+  }
+
+  try {
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    // Remove the specific InventoryItem
+    const inventoryItem = await InventoryItem.findOneAndDelete(
+      {
+        warehouseId: warehouseId,
+        productId: productId,
+        variantId: variantId,
+      },
+      { session }
+    );
+
+    if (!inventoryItem) {
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error('Inventory item with the specified variant not found.');
+    }
+
+    // Update the product's stock quantity based on remaining variants
+    const product = await Product.findOne({ productId: productId }).session(session);
+
+    if (product) {
+      await product.updateStockQuantity(); // Ensure this method recalculates stock based on variants
+    } else {
+      console.warn(`Product with productId ${productId} not found.`);
+    }
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    return inventoryItem;
+  } catch (error) {
+    console.error('Error removing variant from warehouse:', error);
+    throw error;
+  }
+}
+
 async function listInventoryItems(warehouseId) {
   if (!warehouseId) {
     throw new Error('Warehouse ID is required.');
