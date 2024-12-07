@@ -113,12 +113,20 @@ const updateWarehouseOccupancy = async (warehouseId) => {
   }
 };
 
-// Add Product to Warehouse
+/**
+ * Adds a single product to a warehouse, handling variant properties.
+ * Utilizes ProductSchema methods to manage variants.
+ * 
+ * @param {String} warehouseId - The ID of the warehouse.
+ * @param {Object} productData - The product data, including variants.
+ * @returns {Promise<Object>} - The updated or created product.
+ */
 async function addProductToWarehouse(warehouseId, productData) {
   if (!warehouseId) {
     throw new Error('Warehouse ID is required.');
   }
 
+  // Find the warehouse
   const warehouse = await Warehouse.findOne({ warehouseId });
   if (!warehouse) {
     throw new Error('Warehouse not found.');
@@ -126,29 +134,30 @@ async function addProductToWarehouse(warehouseId, productData) {
 
   let product;
 
-  // Check if product exists by productId
+  // Check if the product exists
   if (productData.productId) {
     product = await Product.findOne({ productId: productData.productId });
 
     if (!product) {
-      // Create new product if it doesn't exist
+      // Create a new product if it doesn't exist
       product = new Product(productData);
     } else {
-      // Update existing product details
-      Object.assign(product, productData);
+      // Update existing product's non-variant fields
+      const { variants, ...otherFields } = productData;
+      Object.assign(product, otherFields);
 
-      // Update existing variants
-      if (productData.variants && Array.isArray(productData.variants)) {
-        productData.variants.forEach((incomingVariant) => {
+      // Handle variants using ProductSchema methods
+      if (variants && Array.isArray(variants)) {
+        for (const incomingVariant of variants) {
           const existingVariant = product.variants.find(v => v.variantId === incomingVariant.variantId);
           if (existingVariant) {
-            // Update variant details
-            Object.assign(existingVariant, incomingVariant);
+            // Update variant details using the updateVariant method
+            await product.updateVariant(existingVariant.variantId, incomingVariant);
           } else {
-            // Add new variant
-            product.variants.push(incomingVariant);
+            // Add new variant using the addVariant method
+            await product.addVariant(incomingVariant);
           }
-        });
+        }
       }
     }
   } else {
@@ -159,9 +168,6 @@ async function addProductToWarehouse(warehouseId, productData) {
   // Save the product with updated/created data
   await product.save();
 
-  //  Update total stock quantity in the product
-  // await product.updateStockQuantity();
-
   return product; 
 }
 
@@ -169,14 +175,13 @@ async function addProductToWarehouse(warehouseId, productData) {
 
 
 /**
- * Adds multiple products to a warehouse with respective quantities.
- * Ensures no duplicates for already existing productId in the inventory.
+ * Adds multiple products to a warehouse, handling their variant properties.
+ * Utilizes ProductSchema methods to manage variants.
  * 
  * @param {String} warehouseId - The ID of the warehouse.
- * @param {Array} products - An array of products with productId and quantity.
- * @returns {Array} - An array of updated or created inventory items.
+ * @param {Array} products - An array of products with productId and variants.
+ * @returns {Promise<Array>} - An array of updated or created inventory items.
  */
-// Add Multiple Products to Warehouse
 async function addMultipleProductsToWarehouse(warehouseId, products) { 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -201,12 +206,35 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
       throw new Error(`Products not found: ${missingProducts.join(', ')}`);
     }
 
+    // Iterate over each product to handle variant updates
+    for (const productEntry of products) {
+      const { productId, variants } = productEntry;
 
-    // Depending on application logic, you might need to associate products with the warehouse
-    // For this example, we'll assume that adding a product to a warehouse involves ensuring the product is linked
+      // Find the product
+      const product = await Product.findOne({ productId }).session(session);
+      if (!product) {
+        throw new Error(`Product with productId ${productId} not found.`);
+      }
+
+      // Handle variants using ProductSchema methods
+      if (variants && Array.isArray(variants)) {
+        for (const incomingVariant of variants) {
+          const existingVariant = product.variants.find(v => v.variantId === incomingVariant.variantId);
+          if (existingVariant) {
+            // Update variant details using the updateVariant method
+            await product.updateVariant(existingVariant.variantId, incomingVariant);
+          } else {
+            // Add new variant using the addVariant method
+            await product.addVariant(incomingVariant);
+          }
+        }
+      }
+
+      // Save the product after handling variants
+      await product.save({ session });
+    }
 
     // Prepare bulk operations to associate products with the warehouse
-    // If InventoryItem is used to track association without stockQuantity, adjust accordingly
     const bulkOps = products.map(({ productId }) => ({
       updateOne: {
         filter: { warehouseId, productId },
@@ -222,7 +250,7 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
     }));
 
     // Execute bulk operations
-    const bulkWriteResult = await InventoryItem.bulkWrite(bulkOps, { session });
+    await InventoryItem.bulkWrite(bulkOps, { session });
 
     // Fetch the updated/created inventory items
     const inventoryItems = await InventoryItem.find({ 
