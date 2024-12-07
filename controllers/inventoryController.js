@@ -29,7 +29,6 @@ exports.addProductToWarehouse = async (req, res) => {
   }
 };
 
-// Remove Product from Warehouse
 exports.removeVariantFromWarehouse = async (req, res) => {
   try {
     const { warehouseId, productId, variantId } = req.params;
@@ -47,7 +46,7 @@ exports.removeVariantFromWarehouse = async (req, res) => {
   }
 };
 
-
+// Remove Product from Warehouse
 exports.removeProductFromWarehouse = async (req, res) => {
   try {
     const warehouseId = req.params.warehouseId;
@@ -60,6 +59,8 @@ exports.removeProductFromWarehouse = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // List Inventory Items for a Warehouse
 exports.listInventoryItems = async (req, res) => {
