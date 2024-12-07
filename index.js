@@ -71,6 +71,10 @@ app.use('/orders', orderRoutes);
 const productsRoutes = require('./routes/products');
 app.use('/api/products', productsRoutes);
 
+
+const productRoutes = require('./routes/productRoutes');
+app.use('/product', productRoutes);
+
 const warehouseRoutes = require('./routes/warehouseRoutes');
 app.use('/api/warehouses', warehouseRoutes);
 
