@@ -443,10 +443,9 @@ async function removeProductFromWarehouse(warehouseId, productId) {
     return inventoryItems;
   } catch (error) {
     console.error('Error removing product from warehouse:', error);
-    throw error; 
+    throw error;
   }
 }
-
 
 /**
  * Removes a specific variant from a warehouse's inventory.
@@ -497,62 +496,6 @@ async function removeVariantFromWarehouse(warehouseId, productId, variantId) {
     throw error;
   }
 }
-
-async function listInventoryItems(warehouseId) {
-  if (!warehouseId) {
-    throw new Error('Warehouse ID is required.');
-  }
-
-  const inventoryItems = await InventoryItem.aggregate([
-    // Match inventory items for the specified warehouseId
-    { $match: { warehouseId: warehouseId } },
-    
-    // Lookup to join with the Product collection
-    {
-      $lookup: {
-        from: 'products', // Name of the Product collection
-        localField: 'productId',
-        foreignField: 'productId',
-        as: 'productDetails'
-      }
-    },
-    // Unwind the productDetails array
-    { $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true } },
-    
-    // Lookup to join with the Warehouse collection
-    {
-      $lookup: {
-        from: 'warehouses', // Name of the Warehouse collection
-        localField: 'warehouseId',
-        foreignField: 'warehouseId',
-        as: 'warehouseDetails'
-      }
-    },
-    // Unwind the warehouseDetails array
-    { $unwind: { path: '$warehouseDetails', preserveNullAndEmptyArrays: true } },
-    
-    // Optionally, project the fields you want to return
-    {
-      $project: {
-        _id: 1,
-        warehouseId: 1,
-        productId: 1,
-        stockQuantity: 1,
-        reorderLevel: 1,
-        lastUpdated: 1,
-        createdAt: 1,
-        updatedAt: 1,
-        // Include product details
-        product: '$productDetails',
-        // Include warehouse details
-        warehouse: '$warehouseDetails'
-      }
-    }
-  ]);
-
-  return inventoryItems;
-}
-
 
 // Get All Warehouses with Inventory Items
 async function getAllWarehousesWithInventory() {
