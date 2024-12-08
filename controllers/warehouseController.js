@@ -490,6 +490,7 @@ exports.stockIn = async (req, res, next) => {
 
       // Initialize variables for stock update
       let variant = null;
+      let updatedStockQuantity;
 
       if (variantId) {
         // If variantId is provided, find the specific variant
@@ -503,32 +504,49 @@ exports.stockIn = async (req, res, next) => {
         if (variant.stockQuantity < 0) {
           throw new Error(`Stock quantity for variantId ${variantId} cannot be negative.`);
         }
+
+        // Update the product's aggregated stockQuantity
+        product.stockQuantity += quantity;
+        if (product.stockQuantity < 0) {
+          throw new Error(`Total stock quantity for productId ${productId} cannot be negative.`);
+        }
+
+        updatedStockQuantity = variant.stockQuantity;
       } else {
         // If no variantId, update the product's stockQuantity directly
-        // Note: This assumes that products without variants track stock at the product level
         product.stockQuantity += quantity;
         if (product.stockQuantity < 0) {
           throw new Error(`Stock quantity for productId ${productId} cannot be negative.`);
         }
+
+        updatedStockQuantity = product.stockQuantity;
       }
 
       // Save the product (which includes the updated variant if applicable)
       await product.save({ session });
 
-      // Update InventoryItem's stockQuantity to match the product's total stock
-      // This ensures consistency between InventoryItem and Product's aggregated stock
-      let inventoryItem = await InventoryItem.findOne({ warehouseId, productId }).session(session);
+      // Determine the query parameters for InventoryItem
+      const inventoryQuery = { warehouseId, productId };
+      if (variantId) {
+        inventoryQuery.variantId = variantId;
+      } else {
+        inventoryQuery.variantId = { $exists: false };
+      }
+
+      // Find or create the InventoryItem
+      let inventoryItem = await InventoryItem.findOne(inventoryQuery).session(session);
       if (!inventoryItem) {
         // If InventoryItem doesn't exist, create a new one with initial stockQuantity
         inventoryItem = new InventoryItem({
           warehouseId,
           productId,
-          stockQuantity: product.stockQuantity, // Set to product's total stock
+          variantId: variantId || null, // Set variantId if available
+          stockQuantity: updatedStockQuantity, // Set to variant's or product's stockQuantity
           reorderLevel: 10, // Or retrieve from warehouse/product as needed
         });
       } else {
-        // If InventoryItem exists, update its stockQuantity to match product's stockQuantity
-        inventoryItem.stockQuantity = product.stockQuantity;
+        // If InventoryItem exists, update its stockQuantity to match the variant's or product's stockQuantity
+        inventoryItem.stockQuantity = updatedStockQuantity;
       }
 
       // Update lastUpdated timestamp
@@ -588,6 +606,7 @@ exports.stockIn = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 exports.stockOut = async (req, res, next) => {
   const session = await mongoose.startSession();
