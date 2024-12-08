@@ -158,6 +158,33 @@ const ProductSchema = new mongoose.Schema(
       required: false,
       trim: true,
     },
+    price: {
+      type: Number,
+      required: false,
+      min: [0, 'Price cannot be negative'],
+    },
+    finalPrice: {
+      type: Number,
+      min: [0, 'Final price cannot be negative'],
+    },
+    discount: {
+      amount: {
+        type: Number,
+        min: [0, 'Discount amount cannot be negative'],
+        default: 0,
+      },
+      discountType: {
+        type: String,
+        enum: ['Amount', 'Percentage'],
+        default: 'Amount',
+      },
+      startDate: {
+        type: Date,
+      },
+      endDate: {
+        type: Date,
+      },
+    },
     description: {
       type: LocalizedStringSchema,
       trim: true,
