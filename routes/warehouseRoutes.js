@@ -42,8 +42,10 @@ const validateMoveStock = [
   body('products').isArray({ min: 1 }).withMessage('At least one product must be provided.'),
   body('products.*.productId').notEmpty().withMessage('productId is required for each product.'),
   body('products.*.quantity').isFloat({ gt: 0 }).withMessage('quantity must be greater than 0 for each product.'),
+  body('products.*.variantId').optional().isString().withMessage('variantId must be a string.'),
   // Add more validations as needed
 ];
+
 
 // Middleware for validating stockIn transaction inputs
 const validateStockIn = [
