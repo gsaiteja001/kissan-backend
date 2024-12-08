@@ -3,7 +3,7 @@ const redis = require('redis');
 
 // Create a Redis client
 const client = redis.createClient({
-  url: process.env.REDIS_URL || 'redis://red-ct9a1h9u0jms73co0se0:6379', // Update with your Redis URL
+  url: 'redis://red-ct9a1h9u0jms73co0se0:6379', // Update with your Redis URL
 });
 
 // Connect to Redis
