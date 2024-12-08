@@ -777,6 +777,7 @@ exports.stockOut = async (req, res, next) => {
 
 
 
+
 /**
  * Adjust Stock function
  * Adjusts the stock quantity for specific products (and variants) in a warehouse to new specified values.
@@ -786,7 +787,8 @@ exports.adjustStock = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { warehouseId, products, performedBy, notes } = req.body;
+    const { products, performedBy, notes } = req.body;
+    const { warehouseId } = req.params; // Extracted from URL parameters
 
     // Input Validation
     if (!warehouseId || !products || !Array.isArray(products) || products.length === 0) {
@@ -796,12 +798,12 @@ exports.adjustStock = async (req, res, next) => {
     // Find the Warehouse
     const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
     if (!warehouse) {
-      throw new Error('Warehouse not found.');
+      return res.status(404).json({ error: 'Warehouse not found.' });
     }
 
     // Iterate over each product to adjust stock
     for (const prod of products) {
-      const { productId, variantId, newQuantity, unit } = prod;
+      const { productId, variantId, newQuantity, unit, notes: productNotes } = prod;
 
       if (productId === undefined || newQuantity === undefined) {
         throw new Error('Each product must have a productId and newQuantity.');
@@ -850,7 +852,7 @@ exports.adjustStock = async (req, res, next) => {
       if (variantId) {
         inventoryQuery.variantId = variantId;
       } else {
-        inventoryQuery.variantId = { $exists: false };
+        inventoryQuery.variantId = null; // Changed from { $exists: false } to null
       }
 
       // Find or create the InventoryItem
@@ -888,9 +890,9 @@ exports.adjustStock = async (req, res, next) => {
           variantId: variantId || null, // Include variantId if available
           quantity: transactionQuantity,
           unit: unit || 'kg',
-          notes: notes || `Stock adjusted by ${adjustment} units.`,
+          notes: productNotes || `Stock adjusted by ${adjustment} units.`,
         }],
-        performedBy: performedBy || 'System', 
+        performedBy: performedBy || 'System',
         notes: notes || `Stock adjusted to ${newQuantity} units.`,
       });
 
@@ -914,7 +916,6 @@ exports.adjustStock = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 
 
