@@ -975,7 +975,7 @@ exports.moveStock = async (req, res, next) => {
 
     // Iterate Over Each Product to Move Stock
     for (const prod of products) {
-      const { productId, quantity, unit } = prod;
+      const { productId, variantId, quantity, unit } = prod;
 
       if (productId === undefined || quantity === undefined) {
         throw new Error(
@@ -993,14 +993,21 @@ exports.moveStock = async (req, res, next) => {
         throw new Error(`Product with productId ${productId} not found.`);
       }
 
-      // Find the InventoryItem in Source Warehouse
-      const sourceInventoryItem = await InventoryItem.findOne({
+      // Build the query object
+      const inventoryQuery = {
         warehouseId: sourceWarehouseId,
         productId,
-      }).session(session);
+      };
+
+      if (variantId) {
+        inventoryQuery.variantId = variantId;
+      }
+
+      // Find the InventoryItem in Source Warehouse
+      const sourceInventoryItem = await InventoryItem.findOne(inventoryQuery).session(session);
       if (!sourceInventoryItem) {
         throw new Error(
-          `Inventory item for productId ${productId} not found in source warehouse.`
+          `Inventory item for productId ${productId} and variantId ${variantId || 'N/A'} not found in source warehouse.`
         );
       }
 
@@ -1011,15 +1018,23 @@ exports.moveStock = async (req, res, next) => {
         );
       }
 
-      // Find or Create InventoryItem in Destination Warehouse
-      let destinationInventoryItem = await InventoryItem.findOne({
+      // Prepare Destination Inventory Query
+      const destInventoryQuery = {
         warehouseId: destinationWarehouseId,
         productId,
-      }).session(session);
+      };
+
+      if (variantId) {
+        destInventoryQuery.variantId = variantId;
+      }
+
+      // Find or Create InventoryItem in Destination Warehouse
+      let destinationInventoryItem = await InventoryItem.findOne(destInventoryQuery).session(session);
       if (!destinationInventoryItem) {
         destinationInventoryItem = new InventoryItem({
           warehouseId: destinationWarehouseId,
           productId,
+          variantId: variantId || null,
           stockQuantity: 0,
           reorderLevel: 10,
         });
@@ -1045,6 +1060,7 @@ exports.moveStock = async (req, res, next) => {
       warehouseId: sourceWarehouseId,
       products: products.map((prod) => ({
         productId: prod.productId,
+        variantId: prod.variantId || null,
         quantity: prod.quantity,
         unit: prod.unit || 'kg',
       })),
@@ -1063,6 +1079,7 @@ exports.moveStock = async (req, res, next) => {
       warehouseId: destinationWarehouseId,
       products: products.map((prod) => ({
         productId: prod.productId,
+        variantId: prod.variantId || null,
         quantity: prod.quantity,
         unit: prod.unit || 'kg',
       })),
@@ -1072,8 +1089,8 @@ exports.moveStock = async (req, res, next) => {
         `Received ${products
           .map((p) => `${p.quantity} ${p.unit || 'kg'} of ${p.productId}`)
           .join(', ')} from warehouse ${sourceWarehouseId}.`,
-      relatedTransactionType: 'StockTransaction', // Specifies that relatedTransaction refers to a StockTransaction
-      relatedTransaction: stockOutTransaction._id, // Reference to the stockOutTransaction's _id
+      relatedTransactionType: 'StockTransaction',
+      relatedTransaction: stockOutTransaction._id,
     });
     await stockInTransaction.save({ session });
 
