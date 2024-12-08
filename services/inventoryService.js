@@ -579,6 +579,19 @@ async function listInventoryItems(warehouseId) {
     // Unwind the productDetails array
     { $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true } },
 
+    // Filter productDetails.variants to include only the relevant variant
+    {
+      $addFields: {
+        "productDetails.variants": {
+          $filter: {
+            input: "$productDetails.variants",
+            as: "variant",
+            cond: { $eq: ["$$variant.variantId", "$variantId"] }
+          }
+        }
+      }
+    },
+
     // Lookup to join with the Warehouse collection
     {
       $lookup: {
@@ -591,18 +604,19 @@ async function listInventoryItems(warehouseId) {
     // Unwind the warehouseDetails array
     { $unwind: { path: '$warehouseDetails', preserveNullAndEmptyArrays: true } },
 
-    // Optionally, project the fields you want to return
+    // Project the desired fields
     {
       $project: {
         _id: 1,
         warehouseId: 1,
         productId: 1,
+        variantId: 1,
         stockQuantity: 1,
         reorderLevel: 1,
         lastUpdated: 1,
         createdAt: 1,
         updatedAt: 1,
-        // Include product details
+        // Include product details with only the relevant variant
         product: '$productDetails',
         // Include warehouse details
         warehouse: '$warehouseDetails'
