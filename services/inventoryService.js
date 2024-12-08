@@ -635,7 +635,7 @@ module.exports = {
   addProductToWarehouse,
   removeProductFromWarehouse,
   removeVariantFromWarehouse,
-
+  listInventoryItems,
   addMultipleProductsToWarehouse,
   getAllWarehousesWithInventory,
   getProductIdsFromWarehouses,
