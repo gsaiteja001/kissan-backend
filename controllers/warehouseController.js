@@ -993,18 +993,24 @@ exports.moveStock = async (req, res, next) => {
         throw new Error(`Product with productId ${productId} not found.`);
       }
 
-      // Build the query object
-      const inventoryQuery = {
-        warehouseId: sourceWarehouseId,
-        productId,
-      };
-
+      // Find the Variant (if variantId is provided)
+      let variant = null;
       if (variantId) {
-        inventoryQuery.variantId = variantId;
+        variant = product.variants.find(v => v.variantId === variantId);
+        if (!variant) {
+          throw new Error(`Variant with variantId ${variantId} not found in product ${productId}.`);
+        }
       }
 
+      // Build the InventoryItem Query for Source
+      const sourceInventoryQuery = {
+        warehouseId: sourceWarehouseId,
+        productId,
+        variantId: variantId || null,
+      };
+
       // Find the InventoryItem in Source Warehouse
-      const sourceInventoryItem = await InventoryItem.findOne(inventoryQuery).session(session);
+      const sourceInventoryItem = await InventoryItem.findOne(sourceInventoryQuery).session(session);
       if (!sourceInventoryItem) {
         throw new Error(
           `Inventory item for productId ${productId} and variantId ${variantId || 'N/A'} not found in source warehouse.`
@@ -1018,15 +1024,12 @@ exports.moveStock = async (req, res, next) => {
         );
       }
 
-      // Prepare Destination Inventory Query
+      // Build the InventoryItem Query for Destination
       const destInventoryQuery = {
         warehouseId: destinationWarehouseId,
         productId,
+        variantId: variantId || null,
       };
-
-      if (variantId) {
-        destInventoryQuery.variantId = variantId;
-      }
 
       // Find or Create InventoryItem in Destination Warehouse
       let destinationInventoryItem = await InventoryItem.findOne(destInventoryQuery).session(session);
@@ -1038,20 +1041,30 @@ exports.moveStock = async (req, res, next) => {
           stockQuantity: 0,
           reorderLevel: 10,
         });
+        console.log(`Created new InventoryItem for destination warehouse: ${destinationInventoryItem}`);
       }
 
       // Update Source InventoryItem
       sourceInventoryItem.stockQuantity -= quantity;
       sourceInventoryItem.lastUpdated = new Date();
       await sourceInventoryItem.save({ session });
+      console.log(`Updated Source InventoryItem: ${sourceInventoryItem}`);
 
       // Update Destination InventoryItem
       destinationInventoryItem.stockQuantity += quantity;
       destinationInventoryItem.lastUpdated = new Date();
       await destinationInventoryItem.save({ session });
+      console.log(`Updated Destination InventoryItem: ${destinationInventoryItem}`);
 
-      // Update Products' Total Stock (if necessary)
-     await product.updateStockQuantity();
+      // Update Product Variant's Stock Quantity (if applicable)
+      if (variant) {
+        // Assuming that product.variants is a subdocument array
+        variant.stockQuantity -= quantity; // Deduct from source
+        // If the destination is the same variant, you might want to add quantity
+        // Otherwise, ensure the destination variant is correctly handled
+        await product.updateStockQuantity();
+        console.log(`Updated Product stockQuantity for productId ${productId}: ${product.stockQuantity}`);
+      }
     }
 
     // Create StockTransaction for Stock Out (Source Warehouse)
@@ -1072,6 +1085,7 @@ exports.moveStock = async (req, res, next) => {
           .join(', ')} to warehouse ${destinationWarehouseId}.`,
     });
     await stockOutTransaction.save({ session });
+    console.log(`Created Stock Out Transaction: ${stockOutTransaction}`);
 
     // Create StockTransaction for Stock In (Destination Warehouse)
     const stockInTransaction = new StockTransaction({
@@ -1093,6 +1107,7 @@ exports.moveStock = async (req, res, next) => {
       relatedTransaction: stockOutTransaction._id,
     });
     await stockInTransaction.save({ session });
+    console.log(`Created Stock In Transaction: ${stockInTransaction}`);
 
     // Commit the Transaction
     await session.commitTransaction();
