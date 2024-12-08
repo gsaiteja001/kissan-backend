@@ -1051,7 +1051,7 @@ exports.moveStock = async (req, res, next) => {
       await destinationInventoryItem.save({ session });
 
       // Update Products' Total Stock (if necessary)
-      await product.updateTotalStock();
+     await product.updateStockQuantity();
     }
 
     // Create StockTransaction for Stock Out (Source Warehouse)
