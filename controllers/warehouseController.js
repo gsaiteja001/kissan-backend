@@ -589,10 +589,6 @@ exports.stockIn = async (req, res, next) => {
   }
 };
 
-/**
- * Stock Out function
- * Removes stock from specific products (and variants) in a warehouse and links to a SalesTransaction
- */
 exports.stockOut = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -648,12 +644,12 @@ exports.stockOut = async (req, res, next) => {
           throw new Error(`Variant with variantId ${variantId} not found for productId ${productId}.`);
         }
 
-        // Check if sufficient stock exists
+        // Check if sufficient stock exists in Product Variant
         if (variant.stockQuantity < quantity) {
           throw new Error(`Insufficient stock for variantId ${variantId} of productId ${productId}. Available: ${variant.stockQuantity}, Requested: ${quantity}`);
         }
 
-        // Update the variant's stockQuantity
+        // Deduct stock in Product Variant
         variant.stockQuantity -= quantity;
         if (variant.stockQuantity < 0) {
           throw new Error(`Stock quantity for variantId ${variantId} cannot be negative.`);
@@ -664,17 +660,17 @@ exports.stockOut = async (req, res, next) => {
           throw new Error(`Insufficient stock for productId ${productId}. Available: ${product.stockQuantity}, Requested: ${quantity}`);
         }
 
-        // Update the product's stockQuantity
+        // Deduct stock in Product
         product.stockQuantity -= quantity;
         if (product.stockQuantity < 0) {
           throw new Error(`Stock quantity for productId ${productId} cannot be negative.`);
         }
       }
 
-      // Save the product (which includes the updated variant if applicable)
+      // Save the updated Product
       await product.save({ session });
 
-      // Update InventoryItem's stockQuantity to match the product's or variant's stock
+      // Prepare InventoryItem query
       let inventoryQuery = {
         warehouseId,
         productId,
@@ -684,22 +680,28 @@ exports.stockOut = async (req, res, next) => {
         inventoryQuery.variantId = variantId;
       }
 
-      let inventoryItem = await InventoryItem.findOne(inventoryQuery).session(session);
-      if (!inventoryItem) {
-        throw new Error(`Inventory item for productId ${productId} ${variantId ? `and variantId ${variantId}` : ''} not found in warehouse ${warehouseId}.`);
+      // Atomically update InventoryItem using $inc and conditional stock check
+      const inventoryUpdate = await InventoryItem.findOneAndUpdate(
+        { 
+          ...inventoryQuery,
+          stockQuantity: { $gte: quantity } // Ensure sufficient stock
+        },
+        { 
+          $inc: { stockQuantity: -quantity },
+          $set: { lastUpdated: new Date() }
+        },
+        { 
+          new: true,
+          session 
+        }
+      );
+
+      if (!inventoryUpdate) {
+        throw new Error(`Insufficient inventory stock for productId ${productId} ${variantId ? `and variantId ${variantId}` : ''}.`);
       }
 
-      // Update stockQuantity
-      inventoryItem.stockQuantity -= quantity;
-      if (inventoryItem.stockQuantity < 0) {
-        throw new Error(`Inventory stock quantity cannot be negative for productId ${productId} ${variantId ? `and variantId ${variantId}` : ''}.`);
-      }
-
-      // Update lastUpdated timestamp
-      inventoryItem.lastUpdated = new Date();
-
-      // Save the InventoryItem
-      await inventoryItem.save({ session });
+      // Optionally, you can log the updated inventory stock
+      console.log(`Updated Inventory Stock: ${inventoryUpdate.stockQuantity} for productId ${productId} ${variantId ? `and variantId ${variantId}` : ''}`);
     }
 
     // Create a StockTransaction for Stock Out
