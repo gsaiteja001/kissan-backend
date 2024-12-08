@@ -777,10 +777,9 @@ exports.stockOut = async (req, res, next) => {
 
 
 
-
 /**
  * Adjust Stock function
- * Adjusts the stock quantity for specific products in a warehouse to new specified values.
+ * Adjusts the stock quantity for specific products (and variants) in a warehouse to new specified values.
  */
 exports.adjustStock = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -802,7 +801,7 @@ exports.adjustStock = async (req, res, next) => {
 
     // Iterate over each product to adjust stock
     for (const prod of products) {
-      const { productId, newQuantity, unit } = prod;
+      const { productId, variantId, newQuantity, unit } = prod;
 
       if (productId === undefined || newQuantity === undefined) {
         throw new Error('Each product must have a productId and newQuantity.');
@@ -814,28 +813,67 @@ exports.adjustStock = async (req, res, next) => {
         throw new Error(`Product with productId ${productId} not found.`);
       }
 
-      // Find the InventoryItem
-      let inventoryItem = await InventoryItem.findOne({ warehouseId, productId }).session(session);
-      if (!inventoryItem) {
-        // If InventoryItem does not exist, create it
-        inventoryItem = new InventoryItem({ warehouseId, productId, stockQuantity: 0, reorderLevel: 10 });
-      }
+      let variant = null;
+      let currentQuantity;
+      let adjustment;
 
-      const currentQuantity = inventoryItem.stockQuantity;
-      const adjustment = newQuantity - currentQuantity;
+      if (variantId) {
+        // If variantId is provided, find the specific variant
+        variant = product.variants.find(v => v.variantId === variantId);
+        if (!variant) {
+          throw new Error(`Variant with variantId ${variantId} not found for productId ${productId}.`);
+        }
+
+        currentQuantity = variant.stockQuantity;
+        adjustment = newQuantity - currentQuantity;
+
+        // Update the variant's stockQuantity
+        variant.stockQuantity = newQuantity;
+      } else {
+        // If no variantId, adjust the product's stockQuantity directly
+        currentQuantity = product.stockQuantity;
+        adjustment = newQuantity - currentQuantity;
+
+        product.stockQuantity = newQuantity;
+      }
 
       if (adjustment === 0) {
         // No adjustment needed
         continue;
       }
 
-      // Update the InventoryItem
-      inventoryItem.stockQuantity = newQuantity;
-      inventoryItem.lastUpdated = new Date();
-      await inventoryItem.save({ session });
+      // Save the product (which includes the updated variant if applicable)
+      await product.save({ session });
 
-      // Update the Product's total stock
-      await product.updateTotalStock();
+      // Determine the query parameters for InventoryItem
+      const inventoryQuery = { warehouseId, productId };
+      if (variantId) {
+        inventoryQuery.variantId = variantId;
+      } else {
+        inventoryQuery.variantId = { $exists: false };
+      }
+
+      // Find or create the InventoryItem
+      let inventoryItem = await InventoryItem.findOne(inventoryQuery).session(session);
+      if (!inventoryItem) {
+        // If InventoryItem doesn't exist, create it with the newQuantity
+        inventoryItem = new InventoryItem({
+          warehouseId,
+          productId,
+          variantId: variantId || null,
+          stockQuantity: newQuantity,
+          reorderLevel: 10, // Or retrieve from warehouse/product as needed
+        });
+      } else {
+        // Update the InventoryItem's stockQuantity
+        inventoryItem.stockQuantity = newQuantity;
+      }
+
+      // Update lastUpdated timestamp
+      inventoryItem.lastUpdated = new Date();
+
+      // Save the InventoryItem
+      await inventoryItem.save({ session });
 
       // Determine Transaction Type
       const transactionType = adjustment > 0 ? 'stockIn' : 'stockOut';
@@ -847,10 +885,12 @@ exports.adjustStock = async (req, res, next) => {
         warehouseId,
         products: [{
           productId,
+          variantId: variantId || null, // Include variantId if available
           quantity: transactionQuantity,
           unit: unit || 'kg',
+          notes: notes || `Stock adjusted by ${adjustment} units.`,
         }],
-        performedBy: performedBy || 'System', // Replace with actual user identifier if available
+        performedBy: performedBy || 'System', 
         notes: notes || `Stock adjusted to ${newQuantity} units.`,
       });
 
@@ -874,6 +914,10 @@ exports.adjustStock = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
+
+
 
 /**
  * Move Stock function
