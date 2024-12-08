@@ -259,7 +259,7 @@ router.get('/inventory/products/:warehouseId', inventoryController.listInventory
 // Get All Warehouses with Inventory Items
 router.get('/inventory', inventoryController.getAllWarehousesWithInventory);
 
-router.patch('/:warehouseId/inventory/:inventoryId/adjust', inventoryController.adjustStock);
+router.patch('/:warehouseId/adjust', adjustStock);
 
 router.post('/products/multiple/:warehouseId', inventoryController.addMultipleProductsToWarehouse);
 
