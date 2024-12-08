@@ -471,7 +471,7 @@ exports.stockIn = async (req, res, next) => {
 
     // Iterate over each product in the transaction
     for (const prod of products) {
-      const { productId, variantId, quantity, unit, notes: productNotes } = prod;
+      const { productId, variantId, quantity, unit, notes: productNotes, unitPrice } = prod;
 
       // Validate each product entry
       if (!productId || quantity === undefined) {
@@ -494,7 +494,25 @@ exports.stockIn = async (req, res, next) => {
         if (!variant) {
           throw new Error(`Variant with variantId ${variantId} not found for productId ${productId}.`);
         }
-        // Note: Since we're removing stockQuantity from variants, no need to update variant.stockQuantity
+
+        // Update variant's price with unitPrice if provided
+        if (unitPrice !== undefined && unitPrice !== null) {
+          variant.price = unitPrice;
+          // Optionally, update finalPrice based on discount
+          // This can be handled by the pre-save middleware if necessary
+        }
+      } else {
+        // Update product's price with unitPrice if provided
+        if (unitPrice !== undefined && unitPrice !== null) {
+          product.price = unitPrice;
+          // Optionally, update finalPrice based on discount
+          // This can be handled by the pre-save middleware if necessary
+        }
+      }
+
+      // Save the product if price was updated
+      if (unitPrice !== undefined && unitPrice !== null) {
+        await product.save({ session });
       }
 
       // Determine the query parameters for InventoryItem
@@ -534,8 +552,9 @@ exports.stockIn = async (req, res, next) => {
         quantity: prod.quantity,
         unit: prod.unit || 'kg',
         notes: prod.notes || '',
+        unitPrice: prod.unitPrice, // Include unitPrice
       })),
-      performedBy: performedBy || 'System', // Replace with actual user if available
+      performedBy: performedBy || 'System', 
       notes: notes || '',
       // Do NOT set relatedTransactionType or relatedTransaction for Purchase linkage
     });
@@ -574,7 +593,6 @@ exports.stockIn = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 
 exports.stockOut = async (req, res, next) => {
