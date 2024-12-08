@@ -94,17 +94,17 @@ const validateStockOut = [
 ];
 
 // Adjust Stock Route
-router.post(
-  '/adjust-stock',
-  validateAdjustStock,
-  async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    adjustStock(req, res, next);
-  }
-);
+// router.post(
+//   '/adjust-stock',
+//   validateAdjustStock,
+//   async (req, res, next) => {
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//       return res.status(400).json({ errors: errors.array() });
+//     }
+//     adjustStock(req, res, next);
+//   }
+// );
 
 // Move Stock Route
 router.post(
