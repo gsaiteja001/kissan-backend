@@ -1069,14 +1069,9 @@ exports.moveStock = async (req, res, next) => {
 
       const totalStock = totalStockResult.length > 0 ? totalStockResult[0].total : 0;
 
-      // Update the Product's stockQuantity
-      await Product.updateOne(
-        { productId },
-        { stockQuantity: totalStock },
-        { session }
-      );
-
-      console.log(`Updated Product stockQuantity for productId ${productId}: ${totalStock}`);
+      // Update the Product's stockQuantity using the static method
+      const updatedProduct = await Product.updateStockQuantityFromInventory(productId, session);
+      console.log(`Updated Product stockQuantity for productId ${productId}: ${updatedProduct.stockQuantity}`);
     }
 
     // Create StockTransaction for Stock Out (Source Warehouse)
@@ -1147,6 +1142,7 @@ exports.moveStock = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 /**
