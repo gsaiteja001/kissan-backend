@@ -119,62 +119,63 @@ const updateWarehouseOccupancy = async (warehouseId) => {
  * 
  * @param {String} warehouseId - The ID of the warehouse.
  * @param {Object} productData - The product data, including variants.
- * @returns {Promise<Object>} - The updated or created product.
+ * @returns {Promise<Object>} - The updated or created InventoryItems.
  */
 async function addProductToWarehouse(warehouseId, productData) {
   if (!warehouseId) {
     throw new Error('Warehouse ID is required.');
   }
 
-  // Find the warehouse
-  const warehouse = await Warehouse.findOne({ warehouseId });
-  if (!warehouse) {
-    throw new Error('Warehouse not found.');
-  }
-
-  let product;
-
-  // Check if the product exists
-  if (productData.productId) {
-    product = await Product.findOne({ productId: productData.productId });
-
-    if (!product) {
-      // Create a new product if it doesn't exist
-      product = new Product(productData);
-    } else {
-      // Update existing product's non-variant fields
-      const { variants, ...otherFields } = productData;
-      Object.assign(product, otherFields);
-
-      // Handle variants using ProductSchema methods
-      if (variants && Array.isArray(variants)) {
-        for (const incomingVariant of variants) {
-          const existingVariant = product.variants.find(
-            (v) => v.variantId === incomingVariant.variantId
-          );
-          if (existingVariant) {
-            // Update variant details using the updateVariant method
-            await product.updateVariant(existingVariant.variantId, incomingVariant);
-          } else {
-            // Add new variant using the addVariant method
-            await product.addVariant(incomingVariant);
-          }
-        }
-      }
-    }
-  } else {
-    // If no productId, create a completely new product
-    product = new Product(productData);
-  }
-
-  // Save the product with updated/created data
-  await product.save();
-
-  // Handle InventoryItem creation or update
+  // Start a session for transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    // Find the warehouse within the session
+    const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
+    if (!warehouse) {
+      throw new Error('Warehouse not found.');
+    }
+
+    let product;
+
+    // Check if the product exists
+    if (productData.productId) {
+      product = await Product.findOne({ productId: productData.productId }).session(session);
+
+      if (!product) {
+        // Create a new product if it doesn't exist
+        product = new Product(productData);
+      } else {
+        // Update existing product's non-variant fields
+        const { variants, ...otherFields } = productData;
+        Object.assign(product, otherFields);
+
+        // Handle variants using ProductSchema methods
+        if (variants && Array.isArray(variants)) {
+          for (const incomingVariant of variants) {
+            const existingVariant = product.variants.find(
+              (v) => v.variantId === incomingVariant.variantId
+            );
+            if (existingVariant) {
+              // Update variant details using the updateVariant method
+              await product.updateVariant(existingVariant.variantId, incomingVariant);
+            } else {
+              // Add new variant using the addVariant method
+              await product.addVariant(incomingVariant);
+            }
+          }
+        }
+      }
+    } else {
+      // If no productId, create a completely new product
+      product = new Product(productData);
+    }
+
+    // Save the product with updated/created data within the session
+    await product.save({ session });
+
+    // Handle InventoryItem creation or update
     if (productData.variants && Array.isArray(productData.variants)) {
       // Iterate over each variant to create/update InventoryItem
       for (const variant of productData.variants) {
@@ -187,25 +188,26 @@ async function addProductToWarehouse(warehouseId, productData) {
           variantId: variantId || null, // Set to null if variantId is not provided
         };
 
-        // Find or create the InventoryItem
-        let inventoryItem = await InventoryItem.findOne(inventoryQuery).session(session);
-        if (!inventoryItem) {
-          // Create a new InventoryItem
-          inventoryItem = new InventoryItem({
-            warehouseId,
-            productId: product.productId,
-            variantId: variantId || null,
-            stockQuantity: 0, // Initialize with zero or any default value
-            reorderLevel: 10, // Default reorder level
-            lastUpdated: new Date(),
-          });
-        } else {
-          // Optionally, update existing InventoryItem's lastUpdated
-          inventoryItem.lastUpdated = new Date();
-        }
+        // Find or create the InventoryItem using upsert
+        await InventoryItem.findOneAndUpdate(
+          inventoryQuery,
+          {
+            $setOnInsert: {
+              stockQuantity: 0, // Initialize with zero or any default value
+              reorderLevel: 10, // Default reorder level
+            },
+            $set: {
+              lastUpdated: new Date(),
+            },
+          },
+          {
+            new: true,
+            upsert: true, // Creates the document if it doesn't exist
+            session,
+          }
+        );
 
-        // Save the InventoryItem
-        await inventoryItem.save({ session });
+        console.log(`InventoryItem ensured for productId ${product.productId} ${variantId ? `and variantId ${variantId}` : ''}.`);
       }
     } else {
       // Handle products without variants
@@ -215,25 +217,26 @@ async function addProductToWarehouse(warehouseId, productData) {
         variantId: null,
       };
 
-      // Find or create the InventoryItem
-      let inventoryItem = await InventoryItem.findOne(inventoryQuery).session(session);
-      if (!inventoryItem) {
-        // Create a new InventoryItem
-        inventoryItem = new InventoryItem({
-          warehouseId,
-          productId: product.productId,
-          variantId: null,
-          stockQuantity: 0, // Initialize with zero or any default value
-          reorderLevel: 10, // Default reorder level
-          lastUpdated: new Date(),
-        });
-      } else {
-        // Optionally, update existing InventoryItem's lastUpdated
-        inventoryItem.lastUpdated = new Date();
-      }
+      // Find or create the InventoryItem using upsert
+      await InventoryItem.findOneAndUpdate(
+        inventoryQuery,
+        {
+          $setOnInsert: {
+            stockQuantity: 0, // Initialize with zero or any default value
+            reorderLevel: 10, // Default reorder level
+          },
+          $set: {
+            lastUpdated: new Date(),
+          },
+        },
+        {
+          new: true,
+          upsert: true, // Creates the document if it doesn't exist
+          session,
+        }
+      );
 
-      // Save the InventoryItem
-      await inventoryItem.save({ session });
+      console.log(`InventoryItem ensured for productId ${product.productId} with no variant.`);
     }
 
     // Commit the transaction
@@ -248,13 +251,13 @@ async function addProductToWarehouse(warehouseId, productData) {
         warehouseId,
         productId: product.productId,
         variantId: { $in: variantIds },
-      });
+      }).session(session);
     } else {
       inventoryItems = await InventoryItem.find({
         warehouseId,
         productId: product.productId,
         variantId: null,
-      });
+      }).session(session);
     }
 
     return inventoryItems;
@@ -269,26 +272,28 @@ async function addProductToWarehouse(warehouseId, productData) {
 
 
 
-/**
- * Adds multiple products to a warehouse, handling their variant properties.
- * Utilizes ProductSchema methods to manage variants.
- * 
- * @param {String} warehouseId - The ID of the warehouse.
- * @param {Array} products - An array of products with productId and variants.
- * @returns {Promise<Array>} - An array of updated or created inventory items.
- */
+
 /**
  * Adds multiple products (with optional variants) to a warehouse.
  * Ensures each product and variant is properly associated with the warehouse.
+ * 
+ * @param {String} warehouseId - The ID of the warehouse.
+ * @param {Array} products - An array of products with productId and variants.
+ * @returns {Promise<Array>} - An array of updated or created InventoryItems.
  */
 async function addMultipleProductsToWarehouse(warehouseId, products) {
+  if (!warehouseId) {
+    throw new Error('Warehouse ID is required.');
+  }
+
+  // Start a session for transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     console.log(`Adding multiple products to Warehouse ID: ${warehouseId}`);
 
-    // Find the warehouse by warehouseId
+    // Find the warehouse within the session
     const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
     if (!warehouse) {
       throw new Error('Warehouse not found.');
@@ -309,7 +314,7 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
     for (const productEntry of products) {
       const { productId, variants } = productEntry;
 
-      // Find the product
+      // Find the product within the session
       const product = await Product.findOne({ productId }).session(session);
       if (!product) {
         throw new Error(`Product with productId ${productId} not found.`);
@@ -334,7 +339,7 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
         }
       }
 
-      // Save the product after handling variants
+      // Save the product after handling variants within the session
       await product.save({ session });
     }
 
@@ -354,9 +359,12 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
                 variantId: variant.variantId || null,
               },
               update: {
+                $setOnInsert: {
+                  stockQuantity: 0, // Initialize with zero or any default value
+                  reorderLevel: 10, // Default reorder level
+                },
                 $set: {
                   lastUpdated: new Date(),
-                  // You can set other fields here if needed
                 },
               },
               upsert: true,
@@ -373,9 +381,12 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
               variantId: null,
             },
             update: {
+              $setOnInsert: {
+                stockQuantity: 0, // Initialize with zero or any default value
+                reorderLevel: 10, // Default reorder level
+              },
               $set: {
                 lastUpdated: new Date(),
-                // You can set other fields here if needed
               },
             },
             upsert: true,
@@ -385,17 +396,38 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
     }
 
     if (bulkOps.length > 0) {
-      // Execute bulk operations
+      // Execute bulk operations within the session
       await InventoryItem.bulkWrite(bulkOps, { session });
+      console.log(`Bulk operations executed for Warehouse ID: ${warehouseId}`);
     }
 
     // Fetch the updated/created inventory items
-    const inventoryItems = await InventoryItem.find({
-      warehouseId,
-      productId: { $in: productIds },
-      // If variantId is provided, include it; else, fetch variantId: null
-    }).session(session);
+    let inventoryItems;
+    if (products.some(p => p.variants && Array.isArray(p.variants))) {
+      const variantFilters = products.flatMap(p => 
+        p.variants ? p.variants.map(v => ({ productId: p.productId, variantId: v.variantId || null })) : []
+      );
 
+      // Build dynamic query for variants
+      const variantQueries = variantFilters.map(f => ({
+        warehouseId,
+        productId: f.productId,
+        variantId: f.variantId,
+      }));
+
+      inventoryItems = await InventoryItem.find({
+        $or: variantQueries
+      }).session(session);
+    } else {
+      // Fetch products without variants
+      inventoryItems = await InventoryItem.find({
+        warehouseId,
+        productId: { $in: productIds },
+        variantId: null,
+      }).session(session);
+    }
+
+    // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
@@ -403,6 +435,7 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
 
     return inventoryItems;
   } catch (error) {
+    // Abort the Transaction on Error
     await session.abortTransaction();
     session.endSession();
     console.error(`Transaction aborted due to error: ${error.message}`);
@@ -410,8 +443,15 @@ async function addMultipleProductsToWarehouse(warehouseId, products) {
   }
 }
 
+
+
+
 /**
  * Removes an entire product from a warehouse's inventory.
+ * 
+ * @param {String} warehouseId - The ID of the warehouse.
+ * @param {String} productId - The ID of the product to remove.
+ * @returns {Promise<Object>} - The result of the deletion.
  */
 async function removeProductFromWarehouse(warehouseId, productId) {
   // Input Validation
@@ -419,29 +459,35 @@ async function removeProductFromWarehouse(warehouseId, productId) {
     throw new Error('Both warehouseId and productId are required.');
   }
 
+  // Start a session for transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    // Remove all variants associated with the product in the warehouse
-    const inventoryItems = await InventoryItem.deleteMany({
+    // Remove all InventoryItems associated with the product in the warehouse
+    const deletionResult = await InventoryItem.deleteMany({
       warehouseId: warehouseId,
       productId: productId,
-    });
+    }).session(session);
 
-    if (inventoryItems.deletedCount === 0) {
-      throw new Error('Inventory item(s) not found.');
+    if (deletionResult.deletedCount === 0) {
+      throw new Error('No Inventory items found for the specified product in the warehouse.');
     }
 
-    // Find the product by productId
-    const product = await Product.findOne({ productId: productId });
+    console.log(`Deleted ${deletionResult.deletedCount} InventoryItem(s) for productId ${productId} from warehouse ${warehouseId}.`);
 
-    if (product) {
-      // Update the total stock quantity based on remaining variants
-      await product.updateStockQuantity();
-    } else {
-      console.warn(`Product with productId ${productId} not found.`);
-    }
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
 
-    return inventoryItems;
+    return {
+      message: `Product ${productId} removed from warehouse ${warehouseId} successfully.`,
+      deletedCount: deletionResult.deletedCount,
+    };
   } catch (error) {
+    // Abort the Transaction on Error
+    await session.abortTransaction();
+    session.endSession();
     console.error('Error removing product from warehouse:', error);
     throw error;
   }
@@ -449,6 +495,11 @@ async function removeProductFromWarehouse(warehouseId, productId) {
 
 /**
  * Removes a specific variant from a warehouse's inventory.
+ * 
+ * @param {String} warehouseId - The ID of the warehouse.
+ * @param {String} productId - The ID of the product.
+ * @param {String} variantId - The ID of the variant to remove.
+ * @returns {Promise<Object>} - The deleted InventoryItem.
  */
 async function removeVariantFromWarehouse(warehouseId, productId, variantId) {
   // Input Validation
@@ -456,12 +507,12 @@ async function removeVariantFromWarehouse(warehouseId, productId, variantId) {
     throw new Error('warehouseId, productId, and variantId are required.');
   }
 
-  try {
-    // Start a session for transaction
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  // Start a session for transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    // Remove the specific InventoryItem
+  try {
+    // Remove the specific InventoryItem within the session
     const inventoryItem = await InventoryItem.findOneAndDelete(
       {
         warehouseId: warehouseId,
@@ -472,30 +523,31 @@ async function removeVariantFromWarehouse(warehouseId, productId, variantId) {
     );
 
     if (!inventoryItem) {
-      await session.abortTransaction();
-      session.endSession();
       throw new Error('Inventory item with the specified variant not found.');
     }
 
-    // Update the product's stock quantity based on remaining variants
-    const product = await Product.findOne({ productId: productId }).session(session);
-
-    if (product) {
-      await product.updateStockQuantity(); // Ensure this method recalculates stock based on variants
-    } else {
-      console.warn(`Product with productId ${productId} not found.`);
-    }
+    console.log(`Deleted InventoryItem for productId ${productId} and variantId ${variantId} from warehouse ${warehouseId}.`);
 
     // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
-    return inventoryItem;
+    return {
+      message: `Variant ${variantId} of product ${productId} removed from warehouse ${warehouseId} successfully.`,
+      deletedInventoryItem: inventoryItem,
+    };
   } catch (error) {
+    // Abort the Transaction on Error
+    await session.abortTransaction();
+    session.endSession();
     console.error('Error removing variant from warehouse:', error);
     throw error;
   }
 }
+
+
+
+
 
 // Get All Warehouses with Inventory Items
 async function getAllWarehousesWithInventory() {
