@@ -30,6 +30,7 @@ const productTransactionSchema = new mongoose.Schema({
     default: 'kg',
     enum: ['kg', 'liters', 'units', 'packs', 'boxes', 'others'],
   },
+  unitPrice: { type: Number, required: true },
 }, { _id: false });
 
 const stockTransactionSchema = new mongoose.Schema(
