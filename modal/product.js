@@ -292,63 +292,35 @@ ProductSchema.pre('save', function (next) {
   next();
 });
 
-// Static Method to Update Product's Stock via InventoryItems Aggregation
-ProductSchema.statics.updateStockQuantityFromInventory = async function(productId, session) {
-  const totalStockResult = await InventoryItem.aggregate([
-    { $match: { productId } },
-    { $group: { _id: null, total: { $sum: '$stockQuantity' } } }
-  ]).session(session);
 
-  const totalStock = totalStockResult.length > 0 ? totalStockResult[0].total : 0;
 
-  // Update the Product's stockQuantity
-  const updatedProduct = await this.findOneAndUpdate(
-    { productId },
-    { stockQuantity: totalStock },
-    { new: true, session }
-  );
-
-  return updatedProduct;
-}
-
-/**
- * Adds a new variant to the product.
- * @param {Object} variantData - Data for the new variant.
- * @returns {Promise} - Resolves to the updated product.
- */
-ProductSchema.methods.addVariant = function(variantData) {
+// Example: Updated addVariant method without stockQuantity
+ProductSchema.methods.addVariant = async function(variantData) {
   this.variants.push(variantData);
-  return this.save().then(product => product.updateStockQuantity());
+  return this.save();
 };
 
-/**
- * Updates an existing variant.
- * @param {String} variantId - The ID of the variant to update.
- * @param {Object} updatedData - The updated data for the variant.
- * @returns {Promise} - Resolves to the updated product.
- */
-ProductSchema.methods.updateVariant = function(variantId, updatedData) {
-  const variant = this.variants.id(variantId);
+// Example: Updated updateVariant method without stockQuantity
+ProductSchema.methods.updateVariant = async function(variantId, updatedData) {
+  const variant = this.variants.find(v => v.variantId === variantId);
   if (variant) {
     Object.assign(variant, updatedData);
-    return this.save().then(product => product.updateStockQuantity());
+    return this.save();
   }
   throw new Error('Variant not found');
 };
 
-/**
- * Removes a variant from the product.
- * @param {String} variantId - The ID of the variant to remove.
- * @returns {Promise} - Resolves to the updated product.
- */
-ProductSchema.methods.removeVariant = function(variantId) {
-  const variant = this.variants.id(variantId);
+// Example: Updated removeVariant method without stockQuantity
+ProductSchema.methods.removeVariant = async function(variantId) {
+  const variant = this.variants.find(v => v.variantId === variantId);
   if (variant) {
-    variant.remove();
-    return this.save().then(product => product.updateStockQuantity());
+    this.variants = this.variants.filter(v => v.variantId !== variantId);
+    return this.save();
   }
   throw new Error('Variant not found');
 };
+
+
 
 // Static Methods (Optional)
 
@@ -361,25 +333,6 @@ ProductSchema.statics.findBySKU = function(sku) {
   return this.findOne({ 'variants.sku': sku, archived: { $ne: true } });
 };
 
-/**
- * Updates stock by SKU.
- * @param {String} sku - The SKU of the variant.
- * @param {Number} quantityChange - The change in quantity (positive or negative).
- * @returns {Promise} - Resolves to the updated product.
- */
-ProductSchema.statics.updateStockBySKU = async function(sku, quantityChange) {
-  const product = await this.findOne({ 'variants.sku': sku, archived: { $ne: true } });
-  if (!product) throw new Error('Product with given SKU not found');
-
-  const variant = product.variants.find(v => v.sku === sku);
-  if (!variant) throw new Error('Variant with given SKU not found');
-
-  variant.stockQuantity += quantityChange;
-  if (variant.stockQuantity < 0) variant.stockQuantity = 0;
-
-  await product.updateStockQuantity();
-  return product;
-};
 
 // Indexes for Optimization
 ProductSchema.index({ 'variants.sku': 1 }, { unique: true }); 
