@@ -1055,16 +1055,28 @@ exports.moveStock = async (req, res, next) => {
       destinationInventoryItem.lastUpdated = new Date();
       await destinationInventoryItem.save({ session });
       console.log(`Updated Destination InventoryItem: ${destinationInventoryItem}`);
+    }
 
-      // Update Product Variant's Stock Quantity (if applicable)
-      if (variant) {
-        // Assuming that product.variants is a subdocument array
-        variant.stockQuantity -= quantity; // Deduct from source
-        // If the destination is the same variant, you might want to add quantity
-        // Otherwise, ensure the destination variant is correctly handled
-        await product.updateStockQuantity();
-        console.log(`Updated Product stockQuantity for productId ${productId}: ${product.stockQuantity}`);
-      }
+    // Recalculate and Update Product's Total Stock Quantity
+    for (const prod of products) {
+      const { productId } = prod;
+
+      // Aggregate total stock from all InventoryItems for this product
+      const totalStockResult = await InventoryItem.aggregate([
+        { $match: { productId } },
+        { $group: { _id: null, total: { $sum: '$stockQuantity' } } }
+      ]).session(session);
+
+      const totalStock = totalStockResult.length > 0 ? totalStockResult[0].total : 0;
+
+      // Update the Product's stockQuantity
+      await Product.updateOne(
+        { productId },
+        { stockQuantity: totalStock },
+        { session }
+      );
+
+      console.log(`Updated Product stockQuantity for productId ${productId}: ${totalStock}`);
     }
 
     // Create StockTransaction for Stock Out (Source Warehouse)
@@ -1135,7 +1147,6 @@ exports.moveStock = async (req, res, next) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 
 /**
