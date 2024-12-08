@@ -1,4 +1,3 @@
-// models/Product.js
 
 const mongoose = require('mongoose'); 
 const InventoryItem = require('./InventoryItem');
@@ -259,11 +258,6 @@ const ProductSchema = new mongoose.Schema(
       type: String,
       enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'],
       required: false,
-    },
-    stockQuantity: { // Aggregated stock across all variants
-      type: Number,
-      default: 0,
-      min: [0, 'Total stock cannot be negative'],
     },
     archived: {
       type: Boolean,
