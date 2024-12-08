@@ -33,7 +33,7 @@ const ReviewSchema = new mongoose.Schema(
 
 // Variant Schema
 const VariantSchema = new mongoose.Schema(
-  {
+   {
     variantId: {
       type: String,
       unique: true,
@@ -61,11 +61,7 @@ const VariantSchema = new mongoose.Schema(
       type: Number,
       min: [0, 'Final price cannot be negative'],
     },
-    stockQuantity: {
-      type: Number,
-      default: 0,
-      min: [0, 'Stock quantity cannot be negative'],
-    },
+    // Remove stockQuantity from here
     discount: {
       amount: {
         type: Number,
@@ -288,13 +284,6 @@ ProductSchema.virtual('inventoryItems', {
 ProductSchema.set('toObject', { virtuals: true });
 ProductSchema.set('toJSON', { virtuals: true });
 
-// Method to update total stock quantity in Product
-ProductSchema.methods.updateStockQuantity = async function() {
-  // Aggregates stockQuantity from all variants
-  const total = this.variants.reduce((sum, variant) => sum + (variant.stockQuantity || 0), 0);
-  this.stockQuantity = total;
-  return this.save();
-}
 
 // Pre-save middleware to calculate averageRating and reviewCount
 ProductSchema.pre('save', function (next) {
@@ -309,7 +298,24 @@ ProductSchema.pre('save', function (next) {
   next();
 });
 
-// Instance Methods to Manage Variants
+// Static Method to Update Product's Stock via InventoryItems Aggregation
+ProductSchema.statics.updateStockQuantityFromInventory = async function(productId, session) {
+  const totalStockResult = await InventoryItem.aggregate([
+    { $match: { productId } },
+    { $group: { _id: null, total: { $sum: '$stockQuantity' } } }
+  ]).session(session);
+
+  const totalStock = totalStockResult.length > 0 ? totalStockResult[0].total : 0;
+
+  // Update the Product's stockQuantity
+  const updatedProduct = await this.findOneAndUpdate(
+    { productId },
+    { stockQuantity: totalStock },
+    { new: true, session }
+  );
+
+  return updatedProduct;
+}
 
 /**
  * Adds a new variant to the product.
