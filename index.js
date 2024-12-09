@@ -51,6 +51,8 @@ const PostAds = require('./modal/postAds');
 
 const Diseases = require('./modal/Disease');
 
+const PlantDiseases = require('./modal/multilangDisease');
+
 const farmerController = require('./controllers/farmerController');
 
 
@@ -290,6 +292,18 @@ app.get('/cropProtection/diseases', async (req, res) => {
 });
 
 
+// Get all diseases ---------------------------------------------------------plant-disease-------------------------------------------------
+app.get('/cropProtection/plant-diseases', async (req, res) => {
+  try {
+      const diseases = await PlantDiseases.find();
+      res.status(200).json(diseases);
+  } catch (error) {
+      console.error("Error fetching diseases:", error);
+      res.status(500).json({ error: "Failed to fetch diseases." });
+  }
+});
+
+
 
 // GET /api/diseases?cropId={cropId}
 app.get('/cropId/diseases', async (req, res) => {
@@ -335,6 +349,36 @@ app.put('/diseases/:diseaseId', async (req, res) => {
 
   try {
       const updatedDisease = await Diseases.findOneAndUpdate(
+          { DiseaseId: diseaseId }, 
+          updateData,            
+          { new: true }     
+      );
+
+      if (!updatedDisease) {
+          return res.status(404).json({ error: "Disease not found." });
+      }
+
+      res.status(200).json({
+          message: "Disease updated successfully",
+          data: updatedDisease
+      });
+  } catch (error) {
+      console.error("Error updating disease:", error);
+      res.status(500).json({ error: "Failed to update disease." });
+  }
+});
+
+
+
+//--------------------------plant disease -----------------------------------------
+
+// Update a specific disease by DiseaseId
+app.put('/plant-diseases/:diseaseId', async (req, res) => {
+  const { diseaseId } = req.params;
+  const updateData = req.body;
+
+  try {
+      const updatedDisease = await PlantDiseases.findOneAndUpdate(
           { DiseaseId: diseaseId }, 
           updateData,            
           { new: true }     
