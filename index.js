@@ -398,6 +398,60 @@ app.put('/plant-diseases/:diseaseId', async (req, res) => {
   }
 });
 
+// Route to create a new disease
+app.post('/new-plant-disease', async (req, res) => {
+  const newDiseaseData = req.body;
+
+  // Validation checks for required fields (you can add more validation rules as needed)
+  if (!newDiseaseData.Disease || !newDiseaseData.Symptoms || !newDiseaseData.Title) {
+    return res.status(400).json({ error: 'Disease name, symptoms, and title are required.' });
+  }
+  const generatediseaseId = () => {
+      const timestamp = Date.now();
+      const randomDigits = Math.floor(Math.random() * 9000) + 1000;
+      return `DiseaseId${timestamp}${randomDigits}`;
+  };
+  const diseaseId = generatediseaseId();
+  // Create a new Disease object using the schema
+  const newDisease = new PlantDiseases({
+    DiseaseId: diseaseId,
+    Disease: newDiseaseData.Disease,
+    Symptoms: newDiseaseData.Symptoms,
+    Favourable_Conditions: newDiseaseData.Favourable_Conditions,
+    Management: newDiseaseData.Management,
+    Stages: newDiseaseData.Stages,
+    Title: newDiseaseData.Title,
+    Mode_of_Spread_and_Survival: newDiseaseData.Mode_of_Spread_and_Survival,
+    Viral_Phytoplasma_Disease_Control: newDiseaseData.Viral_Phytoplasma_Disease_Control,
+    Cultural_Control: newDiseaseData.Cultural_Control,
+    Chemical_Control: newDiseaseData.Chemical_Control,
+    Biological_Control: newDiseaseData.Biological_Control,
+    Botanical_Control: newDiseaseData.Botanical_Control,
+    Genetic_Resistance: newDiseaseData.Genetic_Resistance,
+    Soil_Amendments: newDiseaseData.Soil_Amendments,
+    Trap_Methods: newDiseaseData.Trap_Methods,
+    Preventive_Methods: newDiseaseData.Preventive_Methods,
+    Other_Methods: newDiseaseData.Other_Methods,
+    Pathogen: newDiseaseData.Pathogen,
+    images: newDiseaseData.images,
+    crop: newDiseaseData.crop,
+    cropId: newDiseaseData.cropId,
+  });
+
+  try {
+    // Save the new disease to the database
+    const savedDisease = await newDisease.save();
+
+    res.status(201).json({
+      message: 'New disease added successfully.',
+      data: savedDisease,
+    });
+  } catch (error) {
+    console.error('Error saving new disease:', error);
+    res.status(500).json({ error: 'Failed to add new disease.' });
+  }
+});
+
 
 
 
