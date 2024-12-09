@@ -51,7 +51,7 @@ const PostAds = require('./modal/postAds');
 
 const Diseases = require('./modal/Disease');
 
-const PlantDiseases = require('./modal/multilangDisease');
+const PlantDiseases = require('./modal/multilangDiseases');
 
 const farmerController = require('./controllers/farmerController');
 
