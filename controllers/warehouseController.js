@@ -682,46 +682,44 @@ exports.stockOut = async (req, res, next) => {
     }
 
     // Create a StockTransaction for Stock Out
-    const stockOutTransaction = new StockTransaction({
-      transactionType: 'stockOut',
-      warehouseId,
-      products: products.map((prod) => ({
-        productId: prod.productId,
-        variantId: prod.variantId || null, 
-        quantity: prod.quantity,
-        unit: prod.unit || 'kg',
-        notes: prod.notes || '',
-      })),
-      performedBy: performedBy || 'System', 
-      notes: notes || '',
-      // Do NOT set relatedTransactionType or relatedTransaction for SalesTransaction linkage
-    });
-    await stockOutTransaction.save({ session });
-
-    // Link StockTransaction to SalesTransaction if applicable
-    if (salesTransaction) {
-      salesTransaction.stockTransaction = stockOutTransaction._id;
-      await salesTransaction.save({ session });
-    }
-
-    // Commit the transaction
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(200).json({
-      message: 'Stock removed successfully.',
-      stockTransaction: {
-        _id: stockOutTransaction._id,
-        transactionId: stockOutTransaction.transactionId,
-        transactionType: stockOutTransaction.transactionType,
-        warehouseId: stockOutTransaction.warehouseId,
-        products: stockOutTransaction.products,
-        performedBy: stockOutTransaction.performedBy,
-        notes: stockOutTransaction.notes,
-        timestamp: stockOutTransaction.timestamp,
-        // Optionally exclude relatedTransactionType and relatedTransaction for SalesTransaction linkage
-      },
-    });
+      const stockOutTransaction = new StockTransaction({
+        transactionType: 'stockOut',
+        warehouseId,
+        products: products.map((prod) => ({
+          productId: prod.productId,
+          variantId: prod.variantId || null, 
+          quantity: prod.quantity,
+          unit: prod.unit || 'kg',
+          notes: prod.notes || '',
+        })),
+        performedBy: performedBy || 'System', 
+        notes: notes || '',
+      });
+      await stockOutTransaction.save({ session });
+      
+      // Link StockTransaction to SalesTransaction if applicable
+      if (salesTransaction) {
+        salesTransaction.stockTransaction = stockOutTransaction._id;  
+        await salesTransaction.save({ session });  
+      }
+      
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+      
+      res.status(200).json({
+        message: 'Stock removed successfully.',
+        stockTransaction: {
+          _id: stockOutTransaction._id,
+          transactionId: stockOutTransaction.transactionId,
+          transactionType: stockOutTransaction.transactionType,
+          warehouseId: stockOutTransaction.warehouseId,
+          products: stockOutTransaction.products,
+          performedBy: stockOutTransaction.performedBy,
+          notes: stockOutTransaction.notes,
+          timestamp: stockOutTransaction.timestamp,
+        },
+      });
   } catch (error) {
     // Abort the Transaction on Error
     await session.abortTransaction();
