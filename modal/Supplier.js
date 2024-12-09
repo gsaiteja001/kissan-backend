@@ -36,10 +36,10 @@ const productReferenceSchema = new mongoose.Schema(
 // Certification Sub-schema
 const certificationSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    authority: { type: String },
-    dateObtained: { type: Date },
-    validUntil: { type: Date },
+    name: { type: String, required: false },
+    authority: { type: String, required: false },
+    dateObtained: { type: Date, required: false },
+    validUntil: { type: Date, required: false },
   },
   { _id: false }
 );
@@ -47,12 +47,12 @@ const certificationSchema = new mongoose.Schema(
 // Location Sub-schema with Geospatial Data
 const locationSchema = new mongoose.Schema(
   {
-    country: { type: String },
-    state: { type: String },
-    city: { type: String },
+    country: { type: String, required: false },
+    state: { type: String, required: false },
+    city: { type: String, required: false },
     coordinates: {
-      type: { type: String, enum: ['Point'], default: 'Point' },
-      coordinates: { type: [Number] }, // [longitude, latitude]
+      type: { type: String, enum: ['Point'], default: 'Point', required: false },
+      coordinates: { type: [Number], required: false }, 
     },
   },
   { _id: false }
