@@ -1,13 +1,11 @@
-// models/StockTransaction.js
-
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 // Define the types of transactions
 const TRANSACTION_TYPES = ['stockIn', 'stockOut', 'adjust', 'moveStock'];
 
-// Define the types of related transactions (only for internal use)
-const RELATED_TRANSACTION_TYPES = ['StockTransaction'];
+// Include 'SalesTransaction' here to allow referencing SalesTransaction in relatedTransaction
+const RELATED_TRANSACTION_TYPES = ['StockTransaction', 'SalesTransaction'];
 
 const productTransactionSchema = new mongoose.Schema({
   productId: {
@@ -17,7 +15,7 @@ const productTransactionSchema = new mongoose.Schema({
   },
   variantId: {
     type: String,
-    required: [false, 'varient Id is required'],
+    required: false,
     trim: true,
   },
   quantity: {
@@ -37,10 +35,10 @@ const stockTransactionSchema = new mongoose.Schema(
   {
     transactionId: {
       type: String,
-      default: uuidv4, // Automatically generate UUIDv4
+      default: uuidv4,
       unique: true,
       immutable: true,
-      index: true, // For faster querying
+      index: true,
     },
     transactionType: {
       type: String,
@@ -85,5 +83,4 @@ const stockTransactionSchema = new mongoose.Schema(
 stockTransactionSchema.index({ warehouseId: 1, transactionType: 1, timestamp: -1 });
 stockTransactionSchema.index({ 'products.productId': 1 });
 
-// Export the StockTransaction model
 module.exports = mongoose.model('StockTransaction', stockTransactionSchema);
