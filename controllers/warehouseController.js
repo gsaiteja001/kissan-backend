@@ -600,11 +600,15 @@ exports.stockOut = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { warehouseId, products, performedBy, notes, salesTransactionId } = req.body;
+    const { warehouseId, products, performedBy, notes, salesTransactionId, orderId } = req.body;
 
     // Validate input
     if (!warehouseId || !products || !Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ error: 'warehouseId and at least one product are required.' });
+    }
+
+    if (!orderId) {
+      return res.status(400).json({ error: 'orderId is required to create a SalesTransaction.' });
     }
 
     // Find the Warehouse
@@ -615,11 +619,15 @@ exports.stockOut = async (req, res, next) => {
 
     let salesTransaction = null;
     if (salesTransactionId) {
+      // If a salesTransactionId is provided, find the SalesTransaction
       salesTransaction = await SalesTransaction.findOne({ salesTransactionId }).session(session);
       if (!salesTransaction) {
         throw new Error('SalesTransaction not found.');
       }
     }
+
+    // We will store product details needed for SalesTransaction if we create a new one
+    const salesProductsData = [];
 
     // Iterate over each product in the transaction
     for (const prod of products) {
@@ -646,7 +654,6 @@ exports.stockOut = async (req, res, next) => {
         if (!variant) {
           throw new Error(`Variant with variantId ${variantId} not found for productId ${productId}.`);
         }
-        // Note: Since we're removing stockQuantity from variants, no need to check variant.stockQuantity
       }
 
       // Determine the query parameters for InventoryItem
@@ -674,52 +681,99 @@ exports.stockOut = async (req, res, next) => {
       );
 
       if (!inventoryUpdate) {
-        throw new Error(`Insufficient inventory stock for productId ${productId} ${variantId ? `and variantId ${variantId}` : ''}.`);
+        throw new Error(`Insufficient inventory stock for productId ${productId}${variantId ? ' and variantId ' + variantId : ''}.`);
       }
 
-      // Optionally, log the updated inventory stock
-      console.log(`Updated Inventory Stock: ${inventoryUpdate.stockQuantity} for productId ${productId} ${variantId ? `and variantId ${variantId}` : ''}`);
+      console.log(`Updated Inventory Stock: ${inventoryUpdate.stockQuantity} for productId ${productId}${variantId ? ' and variantId ' + variantId : ''}`);
+
+      // Prepare product details for SalesTransaction if we need to create one
+      // For simplicity, use product.finalPrice if available, otherwise product.price
+      const unitPrice = product.finalPrice && product.finalPrice > 0 ? product.finalPrice : product.price || 0;
+      const totalPrice = unitPrice * quantity;
+      const taxes = 0; // You can adjust as needed
+      const otherCharges = 0; // You can adjust as needed
+      const totalCost = totalPrice + taxes + otherCharges;
+
+      salesProductsData.push({
+        productId: productId,
+        quantity: quantity,
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
+        taxes: taxes,
+        otherCharges: otherCharges,
+        totalCost: totalCost
+      });
+    }
+
+    // If no salesTransactionId was provided, create a new SalesTransaction
+    if (!salesTransaction) {
+      salesTransaction = new SalesTransaction({
+        orderId: orderId,
+        warehouseId: warehouseId,
+        products: salesProductsData,
+        // totals are automatically calculated by pre-save hook
+        paymentStatus: 'Pending',
+        notes: notes || ''
+      });
+      await salesTransaction.save({ session });
     }
 
     // Create a StockTransaction for Stock Out
-      const stockOutTransaction = new StockTransaction({
-        transactionType: 'stockOut',
-        warehouseId,
-        products: products.map((prod) => ({
-          productId: prod.productId,
-          variantId: prod.variantId || null, 
-          quantity: prod.quantity,
-          unit: prod.unit || 'kg',
-          notes: prod.notes || '',
-        })),
-        performedBy: performedBy || 'System', 
-        notes: notes || '',
-      });
-      await stockOutTransaction.save({ session });
-      
-      // Link StockTransaction to SalesTransaction if applicable
-      if (salesTransaction) {
-        salesTransaction.stockTransaction = stockOutTransaction._id;  
-        await salesTransaction.save({ session });  
+    const stockOutTransaction = new StockTransaction({
+      transactionType: 'stockOut',
+      warehouseId,
+      products: products.map((prod) => ({
+        productId: prod.productId,
+        variantId: prod.variantId || null, 
+        quantity: prod.quantity,
+        unit: prod.unit || 'kg',
+        notes: prod.notes || '',
+      })),
+      performedBy: performedBy || 'System', 
+      notes: notes || '',
+    });
+    await stockOutTransaction.save({ session });
+
+    // Link StockTransaction to SalesTransaction
+    stockOutTransaction.relatedTransactionType = 'SalesTransaction';
+    stockOutTransaction.relatedTransaction = salesTransaction._id;
+    await stockOutTransaction.save({ session });
+
+    // Link the SalesTransaction to StockTransaction
+    salesTransaction.stockTransaction = stockOutTransaction._id;
+    await salesTransaction.save({ session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({
+      message: 'Stock removed successfully.',
+      stockTransaction: {
+        _id: stockOutTransaction._id,
+        transactionId: stockOutTransaction.transactionId,
+        transactionType: stockOutTransaction.transactionType,
+        warehouseId: stockOutTransaction.warehouseId,
+        products: stockOutTransaction.products,
+        performedBy: stockOutTransaction.performedBy,
+        notes: stockOutTransaction.notes,
+        timestamp: stockOutTransaction.timestamp,
+      },
+      salesTransaction: {
+        _id: salesTransaction._id,
+        salesTransactionId: salesTransaction.salesTransactionId,
+        orderId: salesTransaction.orderId,
+        warehouseId: salesTransaction.warehouseId,
+        products: salesTransaction.products,
+        totalQuantity: salesTransaction.totalQuantity,
+        subTotal: salesTransaction.subTotal,
+        totalTax: salesTransaction.totalTax,
+        totalOtherCharges: salesTransaction.totalOtherCharges,
+        grandTotal: salesTransaction.grandTotal,
+        paymentStatus: salesTransaction.paymentStatus,
+        notes: salesTransaction.notes
       }
-      
-      // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
-      
-      res.status(200).json({
-        message: 'Stock removed successfully.',
-        stockTransaction: {
-          _id: stockOutTransaction._id,
-          transactionId: stockOutTransaction.transactionId,
-          transactionType: stockOutTransaction.transactionType,
-          warehouseId: stockOutTransaction.warehouseId,
-          products: stockOutTransaction.products,
-          performedBy: stockOutTransaction.performedBy,
-          notes: stockOutTransaction.notes,
-          timestamp: stockOutTransaction.timestamp,
-        },
-      });
+    });
   } catch (error) {
     // Abort the Transaction on Error
     await session.abortTransaction();
