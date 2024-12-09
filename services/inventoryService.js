@@ -568,28 +568,41 @@ async function getAllWarehousesWithInventory() {
  * @param {Array} warehouseIds - Array of warehouseId strings.
  * @returns {Array} - Array of unique productId strings.
  */
-const getProductIdsFromWarehouses = async (warehouseIds) => {
+const getProductIdsFromWarehouses = async (warehouseIds) => { 
   try {
     if (!Array.isArray(warehouseIds) || warehouseIds.length === 0) {
       throw new Error('Invalid warehouseIds provided.');
     }
 
-    // Fetch Warehouse ObjectIds
-    const warehouses = await Warehouse.find({ warehouseId: { $in: warehouseIds } }).select('_id').exec();
-    const warehouseObjectIds = warehouses.map(w => w._id);
+    const cacheKey = `productIds:${warehouseIds.sort().join(',')}`; // Define cacheKey appropriately
 
-    console.log(`Found ${warehouseObjectIds.length} Warehouse documents for the provided warehouseIds.`);
-
-    if (warehouseObjectIds.length === 0) {
-      console.error('No matching Warehouse documents found.');
-      return [];
+    // Check Redis Cache First (Optional)
+    const cachedProductIds = await getAsync(cacheKey);
+    if (cachedProductIds) {
+      console.log('Retrieved productIds from cache.');
+      return JSON.parse(cachedProductIds);
     }
 
-    // Aggregation
+    // Aggregation directly on warehouseId
     const products = await InventoryItem.aggregate([
-      { $match: { warehouse: { $in: warehouseObjectIds }, stockQuantity: { $gte: 0 } } },
-      { $group: { _id: null, uniqueProductIds: { $addToSet: '$productId' } } },
-      { $project: { _id: 0, uniqueProductIds: 1 } },
+      { 
+        $match: { 
+          warehouseId: { $in: warehouseIds }, 
+          stockQuantity: { $gte: 0 } 
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          uniqueProductIds: { $addToSet: '$productId' } 
+        } 
+      },
+      { 
+        $project: { 
+          _id: 0, 
+          uniqueProductIds: 1 
+        } 
+      },
     ]);
 
     console.log(`Aggregation result: ${JSON.stringify(products)}`);
@@ -603,7 +616,7 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
     console.log(`Found ${productIds.length} unique productIds.`);
 
     // Cache the productIds
-    await setAsync(cacheKey, 600, JSON.stringify(productIds));
+    await setAsync(cacheKey, 600, JSON.stringify(productIds)); // 600 seconds = 10 minutes
     console.log('Cached productIds in Redis.');
 
     return productIds;
