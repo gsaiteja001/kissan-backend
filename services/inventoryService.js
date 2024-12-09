@@ -574,31 +574,35 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
       throw new Error('Invalid warehouseIds provided.');
     }
 
-    // Create a unique cache key based on warehouseIds
-    const sortedWarehouseIds = warehouseIds.slice().sort(); // Clone and sort to ensure consistency
-    const cacheKey = `productIds:${sortedWarehouseIds.join(',')}`;
+    // Fetch Warehouse ObjectIds
+    const warehouses = await Warehouse.find({ warehouseId: { $in: warehouseIds } }).select('_id').exec();
+    const warehouseObjectIds = warehouses.map(w => w._id);
 
-    // Check if productIds are cached
-    const cachedProductIds = await getAsync(cacheKey);
-    if (cachedProductIds) {
-      console.log('Retrieved productIds from cache.');
-      return JSON.parse(cachedProductIds);
+    console.log(`Found ${warehouseObjectIds.length} Warehouse documents for the provided warehouseIds.`);
+
+    if (warehouseObjectIds.length === 0) {
+      console.error('No matching Warehouse documents found.');
+      return [];
     }
 
-    // Aggregate to get unique productIds from the specified warehouses
+    // Aggregation
     const products = await InventoryItem.aggregate([
-      { $match: { warehouseId: { $in: warehouseIds }, stockQuantity: { $gt: 0 } } },
+      { $match: { warehouse: { $in: warehouseObjectIds }, stockQuantity: { $gt: 0 } } },
       { $group: { _id: null, uniqueProductIds: { $addToSet: '$productId' } } },
       { $project: { _id: 0, uniqueProductIds: 1 } },
     ]);
 
+    console.log(`Aggregation result: ${JSON.stringify(products)}`);
+
     if (products.length === 0) {
+      console.warn('No products found for the given warehouses with stockQuantity > 0.');
       return [];
     }
 
     const productIds = products[0].uniqueProductIds;
+    console.log(`Found ${productIds.length} unique productIds.`);
 
-    // Cache the productIds for 10 minutes (600 seconds)
+    // Cache the productIds
     await setAsync(cacheKey, 600, JSON.stringify(productIds));
     console.log('Cached productIds in Redis.');
 
