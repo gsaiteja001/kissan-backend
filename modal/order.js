@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 const { v4: uuidv4 } = require('uuid');
 
-// Subschema for Address (if not already defined)
+// Subschema for Address
 const AddressSchema = new Schema({
   street: { type: String, required: false },
   area: { type: String, required: false },
@@ -15,19 +15,19 @@ const AddressSchema = new Schema({
 // Subschema for Order Items
 const OrderItemSchema = new Schema({
   productId: { type: String, required: true, ref: 'Product' },
-  variantId: { type: String, required: false, ref: 'Product.variants' }, // Added variantId reference
-  productName: { type: String, required: true }, // Captured at order time
-  sku: { type: String, required: false }, // SKU of the variant
-  size: { type: String, required: false }, // Size from variant
-  unitPrice: { type: Number, required: true, min: [0, 'Unit price cannot be negative'] }, // Captured at order time
-  finalPrice: { type: Number, required: true, min: [0, 'Final price cannot be negative'] }, // Captured at order time
+  variantId: { type: String, required: false, ref: 'Product.variants' },
+  productName: { type: String, required: true },
+  sku: { type: String, required: false },
+  size: { type: String, required: false },
+  unitPrice: { type: Number, required: true, min: [0, 'Unit price cannot be negative'] },
+  finalPrice: { type: Number, required: true, min: [0, 'Final price cannot be negative'] },
   quantity: { type: Number, required: true, default: 1, min: [1, 'Quantity must be at least 1'] },
-  totalPrice: { type: Number, required: true, min: [0, 'Total price cannot be negative'] }, // Calculated
-  weight: { type: Number, required: false }, // Weight per item from variant
-  totalItemWeight: { type: Number, required: false }, // Calculated: weight * quantity
-  hazardous: { type: Boolean, required: false, default: false }, // From product
-  fragile: { type: Boolean, required: false, default: false }, // From product
-  itemType: { type: String, required: false, enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'] }, // From product
+  totalPrice: { type: Number, required: true, min: [0, 'Total price cannot be negative'] },
+  weight: { type: Number, required: false },
+  totalItemWeight: { type: Number, required: false },
+  hazardous: { type: Boolean, required: false, default: false },
+  fragile: { type: Boolean, required: false, default: false },
+  itemType: { type: String, required: false, enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'] },
 }, { _id: false });
 
 // Subschema for Payment Details
@@ -50,7 +50,7 @@ const PaymentDetailsSchema = new Schema({
 // Subschema for Shipping Details
 const ShippingDetailsSchema = new Schema({
   address: AddressSchema,
-  distance: { type: Number, required: false }, // Distance in kilometers
+  distance: { type: Number, required: false },
   estimatedDeliveryDate: { type: Date, required: false },
   shippingMethod: {
     type: String,
@@ -59,7 +59,7 @@ const ShippingDetailsSchema = new Schema({
     required: true,
   },
   trackingNumber: { type: String, required: false },
-  carrier: { type: String, required: false }, 
+  carrier: { type: String, required: false },
 }, { _id: false });
 
 // Subschema for Order Status History
@@ -76,11 +76,15 @@ const OrderStatusHistorySchema = new Schema({
 // Main Order Schema
 const OrderSchema = new Schema(
   {
-    orderId: { type: String, default: uuidv4, unique: true, immutable: true, trim: true }, // Made orderId default to UUID
+    orderId: { type: String, default: uuidv4, unique: true, immutable: true, trim: true },
     farmerId: { type: String, required: false, ref: 'Farmer' },
-    orderItems: { type: [OrderItemSchema], required: true, validate: [arrayLimit, '{PATH} must have at least one order item.'] },
+    orderItems: { 
+      type: [OrderItemSchema], 
+      required: true, 
+      validate: [arrayLimit, '{PATH} must have at least one order item.'] 
+    },
     totalQuantity: { type: Number, required: true, min: [0, 'Total quantity cannot be negative'] },
-    totalWeight: { type: Number, required: true, min: [0, 'Total weight cannot be negative'] }, // Sum of all item weights
+    totalWeight: { type: Number, required: true, min: [0, 'Total weight cannot be negative'] },
     totalPrice: { type: Number, required: true, min: [0, 'Total price cannot be negative'] },
     orderStatus: {
       type: String,
@@ -114,7 +118,7 @@ function arrayLimit(val) {
   return val.length > 0;
 }
 
-// Pre-save middleware to calculate totalQuantity, totalWeight, totalPrice, and totalItemWeight
+// Pre-save middleware to calculate totals
 OrderSchema.pre('save', async function (next) {
   let totalQuantity = 0;
   let totalWeight = 0;
@@ -137,7 +141,7 @@ OrderSchema.pre('save', async function (next) {
       }
 
       // Assign productName from ProductSchema
-      item.productName = product.name.en || product.name; // Assuming English as default language
+      item.productName = product.name.en || product.name; // Adjust based on localization
 
       // Assign SKU from variant or product
       item.sku = variant ? variant.sku : product.sku || '';
@@ -146,8 +150,10 @@ OrderSchema.pre('save', async function (next) {
       item.size = variant ? variant.size : '';
 
       // Assign unitPrice and finalPrice
-      item.unitPrice = variant && variant.finalPrice > 0 ? variant.finalPrice : product.finalPrice > 0 ? product.finalPrice : product.price || 0;
-      item.finalPrice = item.unitPrice; // Assuming finalPrice is same as unitPrice at order time
+      item.unitPrice = variant && variant.finalPrice > 0 ? variant.finalPrice : 
+                       product.finalPrice > 0 ? product.finalPrice : 
+                       product.price || 0;
+      item.finalPrice = item.unitPrice; // Captured at order time
 
       // Calculate totalPrice
       item.totalPrice = item.unitPrice * item.quantity;
@@ -178,6 +184,111 @@ OrderSchema.pre('save', async function (next) {
     next(error);
   }
 });
+
+// Post 'save' hook to handle 'Delivered' status
+OrderSchema.post('save', async function(doc, next) {
+  if (doc.orderStatus === 'Delivered') {
+    const session = this.$session();
+    if (!session) {
+      console.error('No session available for creating SalesTransaction and StockTransaction.');
+      return next();
+    }
+
+    // Check if SalesTransaction already exists
+    const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId }).session(session);
+    if (!existingSalesTx) {
+      try {
+        await createSalesAndStockTransaction(doc, session);
+      } catch (error) {
+        console.error('Error creating SalesTransaction and StockTransaction:', error);
+        // Optionally, you can throw an error to rollback the transaction
+        return next(error);
+      }
+    }
+  }
+
+  next();
+});
+
+// Post 'findOneAndUpdate' hook to handle 'Delivered' status
+OrderSchema.post('findOneAndUpdate', async function(doc, next) {
+  if (!doc) return next();
+
+  if (doc.orderStatus === 'Delivered') {
+    // Access the session from the query options
+    const session = this.getOptions().session;
+    if (!session) {
+      console.error('No session available for creating SalesTransaction and StockTransaction.');
+      return next();
+    }
+
+    // Check if SalesTransaction already exists
+    const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId }).session(session);
+    if (!existingSalesTx) {
+      try {
+        await createSalesAndStockTransaction(doc, session);
+      } catch (error) {
+        console.error('Error creating SalesTransaction and StockTransaction:', error);
+        // Optionally, throw error to rollback the transaction
+        return next(error);
+      }
+    }
+  }
+
+  next();
+});
+
+// Helper function to create SalesTransaction and StockTransaction
+async function createSalesAndStockTransaction(order, session) {
+  // Prepare SalesTransaction data
+  const salesProductsData = order.orderItems.map(item => ({
+    productId: item.productId,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    totalPrice: item.totalPrice,
+    taxes: 0, // Adjust based on business logic
+    otherCharges: 0, // Adjust based on business logic
+    totalCost: item.totalCost,
+  }));
+
+  // Create SalesTransaction
+  const salesTransaction = new mongoose.model('SalesTransaction')({
+    orderId: order.orderId,
+    warehouseId: order.fulfillingWarehouse,
+    products: salesProductsData,
+    paymentStatus: order.paymentDetails ? order.paymentDetails.paymentStatus : 'Pending',
+    paymentDetails: order.paymentDetails || {},
+    notes: order.adminRemarks || order.customerRemarks || '',
+  });
+
+  await salesTransaction.save({ session });
+
+  // Prepare StockTransaction data
+  const stockOutProducts = order.orderItems.map(item => ({
+    productId: item.productId,
+    variantId: item.variantId || null,
+    quantity: item.quantity,
+    unit: 'units', // Adjust based on unit logic
+    unitPrice: item.unitPrice,
+  }));
+
+  // Create StockTransaction
+  const stockOutTransaction = new mongoose.model('StockTransaction')({
+    transactionType: 'stockOut',
+    warehouseId: order.fulfillingWarehouse,
+    products: stockOutProducts,
+    performedBy: 'System', // Adjust based on your logic
+    notes: `Stock out for order ${order.orderId}`,
+    relatedTransactionType: 'SalesTransaction',
+    relatedTransaction: salesTransaction._id,
+  });
+
+  await stockOutTransaction.save({ session });
+
+  // Link StockTransaction to SalesTransaction
+  salesTransaction.stockTransaction = stockOutTransaction._id;
+  await salesTransaction.save({ session });
+}
 
 // Indexes for Optimization
 OrderSchema.index({ orderId: 1 });
