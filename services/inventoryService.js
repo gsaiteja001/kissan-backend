@@ -587,7 +587,7 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
 
     // Aggregation
     const products = await InventoryItem.aggregate([
-      { $match: { warehouse: { $in: warehouseObjectIds }, stockQuantity: { $gt: 0 } } },
+      { $match: { warehouse: { $in: warehouseObjectIds }, stockQuantity: { $gte: 0 } } },
       { $group: { _id: null, uniqueProductIds: { $addToSet: '$productId' } } },
       { $project: { _id: 0, uniqueProductIds: 1 } },
     ]);
