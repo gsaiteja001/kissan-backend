@@ -126,7 +126,6 @@ async function addProductToWarehouse(warehouseId, productData) {
     throw new Error('Warehouse ID is required.');
   }
 
-  // Start a session for transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -177,18 +176,15 @@ async function addProductToWarehouse(warehouseId, productData) {
 
     // Handle InventoryItem creation or update
     if (productData.variants && Array.isArray(productData.variants)) {
-      // Iterate over each variant to create/update InventoryItem
       for (const variant of productData.variants) {
         const { variantId } = variant;
 
-        // Define the query based on variantId
         const inventoryQuery = {
           warehouseId,
           productId: product.productId,
           variantId: variantId || null, // Set to null if variantId is not provided
         };
 
-        // Find or create the InventoryItem using upsert
         await InventoryItem.findOneAndUpdate(
           inventoryQuery,
           {
@@ -207,7 +203,11 @@ async function addProductToWarehouse(warehouseId, productData) {
           }
         );
 
-        console.log(`InventoryItem ensured for productId ${product.productId} ${variantId ? `and variantId ${variantId}` : ''}.`);
+        console.log(
+          `InventoryItem ensured for productId ${product.productId} ${
+            variantId ? `and variantId ${variantId}` : ''
+          }.`
+        );
       }
     } else {
       // Handle products without variants
@@ -217,7 +217,6 @@ async function addProductToWarehouse(warehouseId, productData) {
         variantId: null,
       };
 
-      // Find or create the InventoryItem using upsert
       await InventoryItem.findOneAndUpdate(
         inventoryQuery,
         {
@@ -239,11 +238,7 @@ async function addProductToWarehouse(warehouseId, productData) {
       console.log(`InventoryItem ensured for productId ${product.productId} with no variant.`);
     }
 
-    // Commit the transaction
-    await session.commitTransaction();
-    session.endSession();
-
-    // Fetch the updated or created InventoryItem(s) to return
+    // Fetch the updated or created InventoryItem(s) within the transaction
     let inventoryItems;
     if (productData.variants && Array.isArray(productData.variants)) {
       const variantIds = productData.variants.map((v) => v.variantId || null);
@@ -259,6 +254,10 @@ async function addProductToWarehouse(warehouseId, productData) {
         variantId: null,
       }).session(session);
     }
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
 
     return inventoryItems;
   } catch (error) {
