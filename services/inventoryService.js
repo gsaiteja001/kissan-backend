@@ -595,7 +595,7 @@ const getProductIdsFromWarehouses = async (warehouseIds) => {
     console.log(`Aggregation result: ${JSON.stringify(products)}`);
 
     if (products.length === 0) {
-      console.warn('No products found for the given warehouses with stockQuantity > 0.');
+      console.warn('No products found for the given warehouses with stockQuantity >= 0.');
       return [];
     }
 
