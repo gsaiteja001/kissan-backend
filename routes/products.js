@@ -155,6 +155,53 @@ router.get('/productsByIds', async (req, res) => {
 });
 
 
+// GET /api/products/byCategory
+// Example request: GET /api/products/byCategory?category=Fertilizers
+router.get('/byCategory', async (req, res) => {
+  try {
+    const { category } = req.query;
+
+    if (!category || category.trim() === '') {
+      return res.status(400).json({ error: 'Category parameter is required.' });
+    }
+
+    // If you want 'all' to return all products without filtering,
+    // you can handle that case here:
+    if (category.toLowerCase() === 'all') {
+      const allProducts = await Product.find({ archived: { $ne: true } }).lean();
+      return res.json({ products: allProducts });
+    }
+
+    // Create a case-insensitive regex for the search term
+    const searchTerm = new RegExp(category, 'i');
+
+    // Use $or to match products where the category, tags, or manufacturer fields
+    // contain the searchTerm. 
+    // 'tags' is an array of strings, so we use { $in: [searchTerm] } with regex 
+    // to match any tag that contains the query. For an array, we can do 
+    // { tags: searchTerm } which will match if any element in 'tags' matches the regex.
+    const query = {
+      archived: { $ne: true },
+      $or: [
+        { category: searchTerm },
+        { tags: searchTerm },
+        { manufacturer: searchTerm }
+      ]
+    };
+
+    const products = await Product.find(query).lean();
+
+    // Return products in a JSON response
+    res.json({ products });
+  } catch (error) {
+    console.error('Error fetching category products:', error);
+    res.status(500).json({
+      error: 'Failed to fetch products. Please try again later.',
+    });
+  }
+});
+
+
 
 /**
  * @route   GET /api/warehouses/area-of-interest
