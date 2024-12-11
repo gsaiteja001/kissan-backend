@@ -137,17 +137,12 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
 };
 
 
-/**
- * Finds the nearest warehouse that has a particular product/variant in stock.
- * 
- * @param {Number} userLat - User's latitude.
- * @param {Number} userLong - User's longitude.
- * @param {String} productId - The ID of the product to search for.
- * @param {String} [variantId] - Optional variant ID of the product.
- * @returns {Object} - The nearest warehouseId and distance (meters).
- */
 const findNearestWarehouseWithProduct = async (userLat, userLong, productId, variantId = null) => {
   try {
+    console.log('Starting findNearestWarehouseWithProduct...');
+    console.log(`User Location: Latitude ${userLat}, Longitude ${userLong}`);
+    console.log(`Searching for Product ID: ${productId}, Variant ID: ${variantId || 'Not provided'}`);
+
     // Step 1: Fetch all warehouses with the required product/variant in stock
     const matchingInventoryItems = await InventoryItem.aggregate([
       {
@@ -179,9 +174,11 @@ const findNearestWarehouseWithProduct = async (userLat, userLong, productId, var
     ]);
 
     if (matchingInventoryItems.length === 0) {
-      // No matching warehouses found
+      console.error('No matching inventory items found for the provided product/variant.');
       return { message: 'No warehouse found with the requested product/variant in stock.' };
     }
+
+    console.log(`Matching Inventory Items Found: ${JSON.stringify(matchingInventoryItems, null, 2)}`);
 
     // Step 2: Calculate the distance to each warehouse
     const distances = matchingInventoryItems.map((item) => {
@@ -190,10 +187,19 @@ const findNearestWarehouseWithProduct = async (userLat, userLong, productId, var
       return { warehouseId: item.warehouseId, distance, warehouseName: item.warehouseName };
     });
 
+    console.log(`Calculated Distances to Warehouses: ${JSON.stringify(distances, null, 2)}`);
+
     // Step 3: Find the nearest warehouse
     const nearestWarehouse = distances.reduce((min, current) =>
       current.distance < min.distance ? current : min
     );
+
+    if (!nearestWarehouse) {
+      console.error('No nearest warehouse could be determined from the calculated distances.');
+      return { message: 'No warehouse found with the requested product/variant in stock.' };
+    }
+
+    console.log(`Nearest Warehouse: ${JSON.stringify(nearestWarehouse, null, 2)}`);
 
     return {
       warehouseId: nearestWarehouse.warehouseId,
@@ -201,8 +207,9 @@ const findNearestWarehouseWithProduct = async (userLat, userLong, productId, var
       distance: nearestWarehouse.distance, // Distance in meters
     };
   } catch (error) {
-    console.error('Error in findNearestWarehouseWithProduct:', error);
-    throw error;
+    console.error('Error occurred in findNearestWarehouseWithProduct:', error.message);
+    console.error('Stack Trace:', error.stack);
+    throw new Error('Internal server error while finding the nearest warehouse.');
   }
 };
 
