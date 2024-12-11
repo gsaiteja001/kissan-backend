@@ -133,4 +133,76 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
     throw error; // Propagate the error to be handled upstream
   }
 };
-module.exports = { getWarehousesInAreaOfInterest };
+
+
+/**
+ * Finds the nearest warehouse that has a particular product/variant in stock.
+ * 
+ * @param {Number} userLat - User's latitude.
+ * @param {Number} userLong - User's longitude.
+ * @param {String} productId - The ID of the product to search for.
+ * @param {String} [variantId] - Optional variant ID of the product.
+ * @returns {Object} - The nearest warehouseId and distance (meters).
+ */
+const findNearestWarehouseWithProduct = async (userLat, userLong, productId, variantId = null) => {
+  try {
+    // Step 1: Fetch all warehouses with the required product/variant in stock
+    const matchingInventoryItems = await InventoryItem.aggregate([
+      {
+        $match: {
+          productId,
+          ...(variantId && { variantId }), // Include variantId filter if provided
+          stockQuantity: { $gt: 0 }, // Ensure there is stock available
+        },
+      },
+      {
+        $lookup: {
+          from: 'warehouses', // Collection name for the Warehouse model
+          localField: 'warehouseId',
+          foreignField: 'warehouseId',
+          as: 'warehouse',
+        },
+      },
+      {
+        $unwind: '$warehouse', // Deconstruct the warehouse array
+      },
+      {
+        $project: {
+          warehouseId: 1,
+          warehouseName: '$warehouse.warehouseName',
+          location: '$warehouse.location.coordinates', // Extract warehouse coordinates
+          stockQuantity: 1,
+        },
+      },
+    ]);
+
+    if (matchingInventoryItems.length === 0) {
+      // No matching warehouses found
+      return { message: 'No warehouse found with the requested product/variant in stock.' };
+    }
+
+    // Step 2: Calculate the distance to each warehouse
+    const distances = matchingInventoryItems.map((item) => {
+      const [lon, lat] = item.location; // Coordinates are [longitude, latitude]
+      const distance = haversineDistance(userLat, userLong, lat, lon);
+      return { warehouseId: item.warehouseId, distance, warehouseName: item.warehouseName };
+    });
+
+    // Step 3: Find the nearest warehouse
+    const nearestWarehouse = distances.reduce((min, current) =>
+      current.distance < min.distance ? current : min
+    );
+
+    return {
+      warehouseId: nearestWarehouse.warehouseId,
+      warehouseName: nearestWarehouse.warehouseName,
+      distance: nearestWarehouse.distance, // Distance in meters
+    };
+  } catch (error) {
+    console.error('Error in findNearestWarehouseWithProduct:', error);
+    throw error;
+  }
+};
+
+
+module.exports = { getWarehousesInAreaOfInterest, findNearestWarehouseWithProduct };
