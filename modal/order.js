@@ -28,6 +28,7 @@ const OrderItemSchema = new Schema({
   hazardous: { type: Boolean, required: false, default: false },
   fragile: { type: Boolean, required: false, default: false },
   itemType: { type: String, required: false, enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'] },
+  fulfillingWarehouseId: { type: String, required: true, ref: 'Warehouse' }, // Added fulfillingWarehouseId
 }, { _id: false });
 
 // Subschema for Payment Details
@@ -104,11 +105,7 @@ const OrderSchema = new Schema(
     reasonForReturn: { type: String, required: false },
     customerRemarks: { type: String, required: false },
     adminRemarks: { type: String, required: false },
-    fulfillingWarehouse: {
-      type: String,
-      required: true,
-      ref: 'Warehouse',
-    },
+    // Removed fulfillingWarehouse from the main OrderSchema
   },
   { timestamps: true }
 );
@@ -194,15 +191,18 @@ OrderSchema.post('save', async function(doc, next) {
       return next();
     }
 
-    // Check if SalesTransaction already exists
-    const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId }).session(session);
-    if (!existingSalesTx) {
-      try {
-        await createSalesAndStockTransaction(doc, session);
-      } catch (error) {
-        console.error('Error creating SalesTransaction and StockTransaction:', error);
-        // Optionally, you can throw an error to rollback the transaction
-        return next(error);
+    // Iterate through each OrderItem to handle transactions per warehouse
+    for (let item of doc.orderItems) {
+      // Check if SalesTransaction already exists for this OrderItem
+      const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId, productId: item.productId, warehouseId: item.fulfillingWarehouseId }).session(session);
+      if (!existingSalesTx) {
+        try {
+          await createSalesAndStockTransaction(doc, item, session);
+        } catch (error) {
+          console.error('Error creating SalesTransaction and StockTransaction:', error);
+          // Optionally, you can throw an error to rollback the transaction
+          return next(error);
+        }
       }
     }
   }
@@ -222,15 +222,18 @@ OrderSchema.post('findOneAndUpdate', async function(doc, next) {
       return next();
     }
 
-    // Check if SalesTransaction already exists
-    const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId }).session(session);
-    if (!existingSalesTx) {
-      try {
-        await createSalesAndStockTransaction(doc, session);
-      } catch (error) {
-        console.error('Error creating SalesTransaction and StockTransaction:', error);
-        // Optionally, throw error to rollback the transaction
-        return next(error);
+    // Iterate through each OrderItem to handle transactions per warehouse
+    for (let item of doc.orderItems) {
+      // Check if SalesTransaction already exists for this OrderItem
+      const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId, productId: item.productId, warehouseId: item.fulfillingWarehouseId }).session(session);
+      if (!existingSalesTx) {
+        try {
+          await createSalesAndStockTransaction(doc, item, session);
+        } catch (error) {
+          console.error('Error creating SalesTransaction and StockTransaction:', error);
+          // Optionally, throw error to rollback the transaction
+          return next(error);
+        }
       }
     }
   }
@@ -239,22 +242,24 @@ OrderSchema.post('findOneAndUpdate', async function(doc, next) {
 });
 
 // Helper function to create SalesTransaction and StockTransaction
-async function createSalesAndStockTransaction(order, session) {
+async function createSalesAndStockTransaction(order, item, session) {
   // Prepare SalesTransaction data
-  const salesProductsData = order.orderItems.map(item => ({
+  const salesProductsData = [{
     productId: item.productId,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     totalPrice: item.totalPrice,
     taxes: 0, // Adjust based on business logic
     otherCharges: 0, // Adjust based on business logic
-    totalCost: item.totalCost,
-  }));
+    totalCost: item.totalCost, // Ensure totalCost is defined or calculate accordingly
+  }];
 
   // Create SalesTransaction
-  const salesTransaction = new mongoose.model('SalesTransaction')({
+  const SalesTransaction = mongoose.model('SalesTransaction');
+  const salesTransaction = new SalesTransaction({
     orderId: order.orderId,
-    warehouseId: order.fulfillingWarehouse,
+    productId: item.productId,
+    warehouseId: item.fulfillingWarehouseId,
     products: salesProductsData,
     paymentStatus: order.paymentDetails ? order.paymentDetails.paymentStatus : 'Pending',
     paymentDetails: order.paymentDetails || {},
@@ -264,21 +269,22 @@ async function createSalesAndStockTransaction(order, session) {
   await salesTransaction.save({ session });
 
   // Prepare StockTransaction data
-  const stockOutProducts = order.orderItems.map(item => ({
+  const stockOutProducts = [{
     productId: item.productId,
     variantId: item.variantId || null,
     quantity: item.quantity,
     unit: 'units', // Adjust based on unit logic
     unitPrice: item.unitPrice,
-  }));
+  }];
 
   // Create StockTransaction
-  const stockOutTransaction = new mongoose.model('StockTransaction')({
+  const StockTransaction = mongoose.model('StockTransaction');
+  const stockOutTransaction = new StockTransaction({
     transactionType: 'stockOut',
-    warehouseId: order.fulfillingWarehouse,
+    warehouseId: item.fulfillingWarehouseId,
     products: stockOutProducts,
     performedBy: 'System', // Adjust based on your logic
-    notes: `Stock out for order ${order.orderId}`,
+    notes: `Stock out for order ${order.orderId}, product ${item.productId}`,
     relatedTransactionType: 'SalesTransaction',
     relatedTransaction: salesTransaction._id,
   });
@@ -293,7 +299,7 @@ async function createSalesAndStockTransaction(order, session) {
 // Indexes for Optimization
 OrderSchema.index({ orderId: 1 });
 OrderSchema.index({ farmerId: 1 });
-OrderSchema.index({ fulfillingWarehouse: 1 });
+OrderSchema.index({ 'orderItems.fulfillingWarehouseId': 1 }); // Updated index
 OrderSchema.index({ orderStatus: 1 });
 OrderSchema.index({ orderDate: -1 });
 
