@@ -8,6 +8,10 @@ const AddressSchema = new Schema({
   state: { type: String, required: false },
   postalCode: { type: String, required: false },
   country: { type: String, required: false },
+  location: {
+    type: LocationSchema, 
+    required: true, 
+  },
 });
 
 // Updated Subschema for Location (GeoJSON Point)
