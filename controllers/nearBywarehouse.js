@@ -2,6 +2,8 @@
 const Warehouse = require('../modal/warehouse');
 const { haversineDistance } = require('../utils/distance');
 
+const InventoryItem = require('../modal/InventoryItem');
+
 /**
  * Retrieves the warehouseIds of warehouses within the "area of interest" based on the user's location.
  * 
