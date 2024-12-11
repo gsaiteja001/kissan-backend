@@ -26,7 +26,7 @@ const router = express.Router();
 
 const { body, validationResult } = require('express-validator');
 
-const { getWarehousesInAreaOfInterest } = require('../controllers/nearBywarehouse');
+const { getWarehousesInAreaOfInterest,findNearestWarehouseWithProduct } = require('../controllers/nearBywarehouse');
 
 // Middleware for validating stock transaction inputs
 const validateAdjustStock = [
@@ -208,6 +208,54 @@ router.get('/area-of-interest', async (req, res) => {
     return res.status(200).json({ warehouses });
   } catch (error) {
     console.error('Error in /warehouses/area-of-interest:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+
+
+/**
+ * @route   GET /api/warehouses/nearest-warehouse-with-product
+ * @desc    Get the nearest warehouse containing a specific product/variant in stock
+ * @access  Public or Protected based on your authentication
+ * @queryParams
+ *          - lat: Number (required) - User's latitude
+ *          - long: Number (required) - User's longitude
+ *          - productId: String (required) - ID of the product
+ *          - variantId: String (optional) - ID of the product variant
+ */
+router.get('/nearest-warehouse-with-product', async (req, res) => {
+  try {
+    const { lat, long, productId, variantId } = req.query;
+
+    // Input validation
+    if (!lat || !long || !productId) {
+      return res.status(400).json({ 
+        message: 'Latitude, Longitude, and Product ID are required.' 
+      });
+    }
+
+    const userLat = parseFloat(lat);
+    const userLong = parseFloat(long);
+
+    if (isNaN(userLat) || isNaN(userLong)) {
+      return res.status(400).json({ 
+        message: 'Invalid latitude or longitude.' 
+      });
+    }
+
+    // Call the function to find the nearest warehouse with the product
+    const nearestWarehouse = await findNearestWarehouseWithProduct(userLat, userLong, productId, variantId);
+
+    if (!nearestWarehouse || !nearestWarehouse.warehouseId) {
+      return res.status(404).json({ 
+        message: 'No warehouse found with the requested product/variant in stock.' 
+      });
+    }
+
+    return res.status(200).json(nearestWarehouse);
+  } catch (error) {
+    console.error('Error in /nearest-warehouse-with-product:', error);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 });
