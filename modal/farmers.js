@@ -1,19 +1,6 @@
 const mongoose = require('mongoose'); 
 const { Schema } = mongoose;
 
-// Subschema for Address
-const AddressSchema = new Schema({
-  street: { type: String, required: false },
-  city: { type: String, required: false },
-  state: { type: String, required: false },
-  postalCode: { type: String, required: false },
-  country: { type: String, required: false },
-  location: {
-    type: LocationSchema, 
-    required: true, 
-  },
-});
-
 // Updated Subschema for Location (GeoJSON Point)
 const LocationSchema = new Schema({
   type: {
@@ -27,6 +14,20 @@ const LocationSchema = new Schema({
     required: true,
   },
 });
+
+// Subschema for Address
+const AddressSchema = new Schema({
+  street: { type: String, required: false },
+  city: { type: String, required: false },
+  state: { type: String, required: false },
+  postalCode: { type: String, required: false },
+  country: { type: String, required: false },
+  location: {
+    type: LocationSchema, 
+    required: true, 
+  },
+});
+
 
 // Updated Subschema for Farm Details
 const FarmDetailsSchema = new Schema({
