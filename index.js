@@ -1531,28 +1531,34 @@ app.post('/api/farmers/:farmerId/address', async (req, res) => {
   const { farmerId } = req.params;
   const { fullName, phoneNumber, address, location } = req.body;
 
-  if (!fullName || !phoneNumber || !address) {
-    return res.status(400).json({ message: 'Missing required fields.' });
+  // Validate required fields
+  if (!fullName || !phoneNumber || !address || !address.location || !Array.isArray(address.location.coordinates)) {
+    return res.status(400).json({
+      message: 'Missing required fields: fullName, phoneNumber, address, or location.',
+    });
   }
+
   try {
+    // Find the farmer by farmerId
     const farmer = await farmers.findOne({ farmerId });
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
     }
 
-    // Update the address fields
+    // Update the farmer's address and location
     farmer.fullName = fullName;
     farmer.phoneNumber = phoneNumber;
-    farmer.address = address;
+    farmer.address = {
+      street: address.street || farmer.address.street,
+      city: address.city || farmer.address.city,
+      state: address.state || farmer.address.state,
+      postalCode: address.postalCode || farmer.address.postalCode,
+      country: address.country || farmer.address.country,
+      location: address.location, 
+    };
 
-    // Optionally update location
-    if (location) {
-      farmer.location = location;
-    }
 
-    // Update profile completeness or other fields as needed
-    // Example: farmer.profileCompleteness = calculateProfileCompleteness(farmer);
-
+    // Save the updated farmer document
     await farmer.save();
 
     return res.status(200).json({ message: 'Address updated successfully.' });
