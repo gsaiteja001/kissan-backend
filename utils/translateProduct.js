@@ -22,6 +22,7 @@ const translateProduct = (product, lang) => {
     finalPrice: product.finalPrice,
     discount: product.discount,
     manufacturer: product.manufacturer,
+    images: product.images,
     // **Include Variants**
     variants: product.variants.map((variant) => ({
       variantId: variant.variantId,
