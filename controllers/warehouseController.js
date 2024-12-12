@@ -11,16 +11,7 @@ const Order = require('../modal/order');
 
 const StockTransaction = require('../modal/StockTransaction');
 
-/**
- * @desc    Create a new warehouse with optional staff members
- * @route   POST /api/warehouses
- * @access  Public (Adjust access as needed)
- */
-/**
- * @desc    Create a new warehouse with optional staff members
- * @route   POST /api/warehouses
- * @access  Public (Adjust access as needed)
- */
+
 exports.createWarehouse = async (req, res, next) => {
   try {
     const {
@@ -30,11 +21,26 @@ exports.createWarehouse = async (req, res, next) => {
       storageCapacity,
       inventoryManagementSystem,
       temperatureControlled,
-      // Add other fields if necessary
-      location, // Extract location from the request body
+      location, 
     } = req.body;
 
-    // Optional: Validate that location.type is 'Point'
+    // Validate required fields
+    if (!warehouseName || !warehouseName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Warehouse Name is required.',
+      });
+    }
+
+    // Validate that location is provided
+    if (!location) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location data is required.',
+      });
+    }
+
+    // Validate that location.type is 'Point'
     if (location.type !== 'Point') {
       return res.status(400).json({
         success: false,
@@ -42,7 +48,7 @@ exports.createWarehouse = async (req, res, next) => {
       });
     }
 
-    // Optional: Validate that coordinates are in the correct format
+    // Validate that coordinates are in the correct format
     if (
       !Array.isArray(location.coordinates) ||
       location.coordinates.length !== 2 ||
@@ -62,7 +68,7 @@ exports.createWarehouse = async (req, res, next) => {
       storageCapacity,
       inventoryManagementSystem,
       temperatureControlled,
-      location, // Include location in the new Warehouse
+      location, 
     });
 
     const savedWarehouse = await newWarehouse.save();
@@ -86,6 +92,7 @@ exports.createWarehouse = async (req, res, next) => {
     next(error);
   }
 };
+
 
 
 /**
