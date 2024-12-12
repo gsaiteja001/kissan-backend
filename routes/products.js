@@ -73,6 +73,9 @@ router.get('/similarManufacturer', async (req, res) => {
 });
 
 
+// PUT /api/products/:productId/variants
+router.put('/:productId/variants', updateProductVariants);
+
 /**
  * @route   POST /api/inventory/get-product-ids
  * @desc    Get unique productIds from multiple warehouses
