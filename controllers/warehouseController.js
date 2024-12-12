@@ -16,6 +16,11 @@ const StockTransaction = require('../modal/StockTransaction');
  * @route   POST /api/warehouses
  * @access  Public (Adjust access as needed)
  */
+/**
+ * @desc    Create a new warehouse with optional staff members
+ * @route   POST /api/warehouses
+ * @access  Public (Adjust access as needed)
+ */
 exports.createWarehouse = async (req, res, next) => {
   try {
     const {
@@ -25,8 +30,30 @@ exports.createWarehouse = async (req, res, next) => {
       storageCapacity,
       inventoryManagementSystem,
       temperatureControlled,
-
+      // Add other fields if necessary
+      location, // Extract location from the request body
     } = req.body;
+
+    // Optional: Validate that location.type is 'Point'
+    if (location.type !== 'Point') {
+      return res.status(400).json({
+        success: false,
+        message: 'Location type must be Point.',
+      });
+    }
+
+    // Optional: Validate that coordinates are in the correct format
+    if (
+      !Array.isArray(location.coordinates) ||
+      location.coordinates.length !== 2 ||
+      typeof location.coordinates[0] !== 'number' ||
+      typeof location.coordinates[1] !== 'number'
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location coordinates must be an array of two numbers [longitude, latitude].',
+      });
+    }
 
     const newWarehouse = new Warehouse({
       warehouseName,
@@ -35,6 +62,7 @@ exports.createWarehouse = async (req, res, next) => {
       storageCapacity,
       inventoryManagementSystem,
       temperatureControlled,
+      location, // Include location in the new Warehouse
     });
 
     const savedWarehouse = await newWarehouse.save();
@@ -58,6 +86,7 @@ exports.createWarehouse = async (req, res, next) => {
     next(error);
   }
 };
+
 
 /**
  * @desc    Update a staff member in a warehouse
