@@ -39,6 +39,89 @@ exports.createProduct = async (req, res, next) => {
 };
 
 
+exports.updateProductVariants = async (req, res) => {
+const { productId } = req.params;
+  const { variants } = req.body;
+
+  // Validate request body
+  if (!variants || !Array.isArray(variants)) {
+    return res.status(400).json({
+      message: 'Invalid request: "variants" must be an array.',
+    });
+  }
+
+  try {
+    // Find the product by productId
+    const product = await Product.findOne({ productId });
+
+    if (!product) {
+      return res.status(404).json({
+        message: `Product with productId "${productId}" not found.`,
+      });
+    }
+
+    // Iterate over each variant in the request
+    for (const variantData of variants) {
+      const { variantId } = variantData;
+
+      if (variantId) {
+        // Check if the variant already exists
+        const existingVariant = product.variants.find(
+          (v) => v.variantId === variantId
+        );
+
+        if (existingVariant) {
+          // Update existing variant
+          await product.updateVariant(variantId, variantData);
+        } else {
+          // If variantId does not exist, add as a new variant
+          await product.addVariant(variantData);
+        }
+      } else {
+        // If no variantId is provided, generate one or handle accordingly
+        // Here, we'll assume variantId is required for adding new variants
+        return res.status(400).json({
+          message:
+            'Each variant must have a "variantId" to add or update.',
+        });
+      }
+    }
+
+    // Save the updated product
+    await product.save();
+
+    // Optionally, populate any virtuals or references if needed
+    // await product.populate('inventoryItems').execPopulate();
+
+    return res.status(200).json({
+      message: 'Variants updated successfully.',
+      product,
+    });
+  } catch (error) {
+    console.error('Error updating variants:', error);
+
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(
+        (val) => val.message
+      );
+      return res.status(400).json({ message: messages.join(', ') });
+    }
+
+    // Handle duplicate key errors (e.g., unique constraints)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue);
+      return res.status(409).json({
+        message: `Duplicate value for field: ${field}.`,
+      });
+    }
+
+    // Generic server error
+    return res.status(500).json({
+      message: 'Server Error: Unable to update variants.',
+    });
+  }
+};
 
 
 
