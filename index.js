@@ -9,7 +9,6 @@ const jwt = require('jsonwebtoken');
 const app = express();
 
 
-
 const multer = require('multer');
 const path = require('path');
 
@@ -1775,6 +1774,56 @@ app.post('/products', async (req, res) => {
       res.status(500).json({ message: 'Server error during bulk upload.', error: error.message });
     }
   });
+
+
+/**
+ * DELETE /api/products/deleteAllExcept
+ * Deletes all products except those with productIds specified in the request body.
+ * Expects a JSON body with an array of productIds to keep.
+ */
+app.delete('/deleteAllExcept', async (req, res) => {
+  const { productIdsToKeep } = req.body;
+
+  // Validate the input
+  if (
+    !productIdsToKeep ||
+    !Array.isArray(productIdsToKeep) ||
+    productIdsToKeep.length !== 3
+  ) {
+    return res.status(400).json({
+      message:
+        'Please provide an array of exactly three productIds to keep.',
+    });
+  }
+
+  try {
+    // Verify that the provided productIds exist
+    const existingProducts = await Product.find({
+      productId: { $in: productIdsToKeep },
+    });
+
+    if (existingProducts.length !== 3) {
+      return res.status(404).json({
+        message:
+          'One or more productIds to keep do not exist.',
+      });
+    }
+
+    // Delete all products except those with productIds in productIdsToKeep
+    const result = await Product.deleteMany({
+      productId: { $nin: productIdsToKeep },
+    });
+
+    res.json({
+      message: `Deleted ${result.deletedCount} products.`,
+    });
+  } catch (error) {
+    console.error('Error deleting products:', error);
+    res
+      .status(500)
+      .json({ message: 'Server error while deleting products.' });
+  }
+});
   
 
 app.get('/api/products/:id', async (req, res) => {
