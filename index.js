@@ -1893,11 +1893,11 @@ app.get('/api/products', async (req, res) => {
 
 
 
- // update product by ID
- app.put('/products/:id', async (req, res) => {
+// Update product by productId
+app.put('/products/:productId', async (req, res) => {
   try {
-    // Find the product by a unique identifier, like productCode
-    const product = await Product.findOne({ productCode: req.params.productId });
+    // Find the product by productId
+    const product = await Product.findOne({ productId: req.params.productId });
 
     if (!product) {
       return res.status(404).json({ message: 'Product not found.' });
@@ -1911,6 +1911,7 @@ app.get('/api/products', async (req, res) => {
 
     res.status(200).json({ message: 'Product updated successfully.', product: updatedProduct });
   } catch (error) {
+    console.error('Error updating product:', error);
     res.status(500).json({ message: 'Error updating product.', error: error.message });
   }
 });
