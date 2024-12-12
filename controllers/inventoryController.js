@@ -111,7 +111,7 @@ exports.addMultipleProductsToWarehouse = async (req, res) => {
         }
 
         for (const variant of product.variants) {
-          if (!variant.variantId || !variant.size) {
+          if (!variant.variantId ) {
             return res.status(400).json({
               message: 'Each variant must have a variantId and size.',
             });
