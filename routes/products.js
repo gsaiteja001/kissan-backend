@@ -4,7 +4,7 @@ const translateProduct = require('../utils/translateProduct');
 const Product = require('../modal/product'); 
 const { getProductIdsFromWarehouses } = require('../services/inventoryService');
 
-const {updateProductVariants} = require('../controllers/productControllers');
+const {updateProductVariants} = require('../controllers/productController');
 
 // Similar Products Route
 router.get('/similarProducts', async (req, res) => {
