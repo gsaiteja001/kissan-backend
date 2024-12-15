@@ -24,8 +24,24 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
           // No maxDistance to retrieve all relevant warehouses
         },
       },
+      // Step 1a: Lookup InventoryItems to count the number of products per warehouse
       {
-        $sort: { distanceToUser: 1 }, 
+        $lookup: {
+          from: 'inventoryitems', // Ensure this matches the actual collection name
+          localField: 'warehouseId',
+          foreignField: 'warehouseId',
+          as: 'inventoryItems',
+        },
+      },
+      // Step 1b: Add a field 'inventoryCount' representing the number of inventory items
+      {
+        $addFields: {
+          inventoryCount: { $size: '$inventoryItems' },
+        },
+      },
+      // Step 1c: Sort by distance to user
+      {
+        $sort: { distanceToUser: 1 },
       },
     ]);
 
@@ -34,11 +50,25 @@ const getWarehousesInAreaOfInterest = async (userLat, userLong) => {
       return [];
     }
 
-    // Step 2: Identify the 1st closest warehouse (W1) and its distance (D1)
-    const W1 = nearbyWarehouses[0];
-    const D1 = W1.distanceToUser; // Distance in meters
+    // Step 2: Identify the 1st closest warehouse (W1) that has more than 2 inventory items
+    let W1 = null;
+    let D1 = null;
 
-    // Step 3: Identify the 4th closest warehouse (W4) and its distance (D4)
+    for (const warehouse of nearbyWarehouses) {
+      if (warehouse.inventoryCount > 2) {
+        W1 = warehouse;
+        D1 = warehouse.distanceToUser; // Distance in meters
+        break;
+      }
+    }
+
+    if (!W1) {
+      // No warehouse found with more than 2 inventory items
+      return [];
+    }
+
+    // Step 3: Identify the 4th closest warehouse (W4) based on distance
+    // Note: W4 is based on overall proximity, not considering inventoryCount
     let W4 = null;
     if (nearbyWarehouses.length >= 4) {
       W4 = nearbyWarehouses[3];
