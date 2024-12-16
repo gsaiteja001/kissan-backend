@@ -10,7 +10,6 @@ const {
   updateInventoryItem,
   deleteInventoryItem,
   getWarehouseInventory,
-  linkSupplierToWarehouse,
   stockIn,
   stockOut,
   adjustStock,
