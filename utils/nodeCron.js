@@ -1,7 +1,7 @@
 // Pseudo-code example using node-cron
 const cron = require('node-cron');
 const InventoryItem = require('./modal/InventoryItem');
-const LowStockAlert = require('./modal/LowStockAlert');
+const LowStockAlert = require('./modal/LowStockAlertSchema');
 
 cron.schedule('0 * * * *', async () => { // Runs every hour
   try {
