@@ -15,6 +15,8 @@ const {
   stockOut,
   adjustStock,
   moveStock,
+  getUnlinkedSuppliers,
+  linkSupplierToWarehouse,
 } = require('../controllers/warehouseController');
 
 
@@ -260,6 +262,12 @@ router.get('/nearest-warehouse-with-product', async (req, res) => {
   }
 });
 
+
+// Route to get unlinked suppliers for a warehouse
+router.get('/:warehouseId/unlinked-suppliers', warehouseController.getUnlinkedSuppliers);
+
+// Route to link a supplier to a warehouse
+router.post('/:warehouseId/link-supplier', warehouseController.linkSupplierToWarehouse);
 
 
 
