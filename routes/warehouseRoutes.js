@@ -28,6 +28,18 @@ const { body, validationResult } = require('express-validator');
 
 const { getWarehousesInAreaOfInterest,findNearestWarehouseWithProduct } = require('../controllers/nearBywarehouse');
 
+
+
+
+const Warehouse = require('../modal/warehouse');
+const InventoryItem = require('../modal/InventoryItem');
+const Supplier = require('../modal/Supplier');
+const Product = require('../modal/product');
+
+const { haversineDistance } = require('../utils/distance');
+
+
+
 // Middleware for validating stock transaction inputs
 const validateAdjustStock = [
   body('warehouseId').notEmpty().withMessage('warehouseId is required.'),
@@ -211,6 +223,181 @@ router.get('/area-of-interest', async (req, res) => {
     return res.status(500).json({ message: 'Internal server error.' });
   }
 });
+
+
+
+/**
+ * @route   POST /api/inventory/fulfillment
+ * @desc    Fulfill low stock products by finding nearby warehouses or suppliers
+ * @access  Public (Adjust as needed)
+ * @body    {
+ *             currentWarehouseId: String,
+ *             currentCoordinates: { latitude: Number, longitude: Number },
+ *             productIds: [String]
+ *          }
+ */
+router.post('/stockfulfillment', async (req, res) => {
+  try {
+    const { currentWarehouseId, currentCoordinates, productIds } = req.body;
+
+    // Input validation
+    if (
+      !currentWarehouseId ||
+      !currentCoordinates ||
+      typeof currentCoordinates.latitude !== 'number' ||
+      typeof currentCoordinates.longitude !== 'number' ||
+      !Array.isArray(productIds) ||
+      productIds.length === 0
+    ) {
+      return res.status(400).json({ message: 'Invalid input data.' });
+    }
+
+    // Fetch the current warehouse details
+    const currentWarehouse = await Warehouse.findOne({ warehouseId: currentWarehouseId });
+    if (!currentWarehouse) {
+      return res.status(404).json({ message: 'Current warehouse not found.' });
+    }
+
+    // Initialize the result array
+    const results = [];
+
+    // Iterate over each productId
+    for (const productId of productIds) {
+      // Fetch the inventory item for the current warehouse and productId
+      const inventoryItem = await InventoryItem.findOne({
+        warehouseId: currentWarehouseId,
+        productId: productId,
+      });
+
+      if (!inventoryItem) {
+        // If inventory item not found, skip or handle as needed
+        results.push({
+          productId,
+          error: 'Inventory item not found in current warehouse.',
+        });
+        continue;
+      }
+
+      const { stockQuantity, reorderLevel } = inventoryItem;
+
+      if (stockQuantity > reorderLevel) {
+        // No need to reorder if stock is sufficient
+        results.push({
+          productId,
+          message: 'Stock is above reorder level. No action needed.',
+        });
+        continue;
+      }
+
+      const requiredQuantity = (reorderLevel - stockQuantity) + 10;
+
+      // Step 1: Search for nearby warehouses with sufficient stock
+      const nearbyWarehouses = await Warehouse.find({
+        warehouseId: { $ne: currentWarehouseId }, // Exclude current warehouse
+        'inventoryItems.productId': productId,
+      }).populate({
+        path: 'inventoryItems',
+        match: { productId: productId, stockQuantity: { $gte: requiredQuantity } },
+      });
+
+      // Filter warehouses that have at least one inventoryItem with sufficient stock
+      const eligibleWarehouses = nearbyWarehouses.filter(
+        (wh) => wh.inventoryItems && wh.inventoryItems.length > 0
+      );
+
+      if (eligibleWarehouses.length > 0) {
+        // Calculate distances
+        const warehousesWithDistance = eligibleWarehouses.map((wh) => {
+          const [lon, lat] = wh.location.coordinates;
+          const distance = haversineDistance(
+            currentCoordinates.latitude,
+            currentCoordinates.longitude,
+            lat,
+            lon
+          );
+          return { warehouse: wh, distance };
+        });
+
+        // Sort by distance
+        warehousesWithDistance.sort((a, b) => a.distance - b.distance);
+
+        // Assign the nearest warehouse
+        const nearestWarehouse = warehousesWithDistance[0].warehouse;
+        const distanceInKm = (warehousesWithDistance[0].distance / 1000).toFixed(2);
+
+        results.push({
+          productId,
+          assignedTo: {
+            type: 'warehouse',
+            warehouseId: nearestWarehouse.warehouseId,
+            message: 'moveOut',
+            distance: `${distanceInKm} km`,
+          },
+        });
+        continue; // Proceed to next productId
+      }
+
+      // Step 2: If no warehouse found, search for nearby suppliers
+      const suppliers = await Supplier.find({
+        'productsSupplied.productId': productId,
+      });
+
+      if (suppliers.length > 0) {
+        // Calculate distances to suppliers
+        const suppliersWithDistance = suppliers.map((sup) => {
+          if (
+            sup.location &&
+            sup.location.coordinates &&
+            sup.location.coordinates.length === 2
+          ) {
+            const [lon, lat] = sup.location.coordinates;
+            const distance = haversineDistance(
+              currentCoordinates.latitude,
+              currentCoordinates.longitude,
+              lat,
+              lon
+            );
+            return { supplier: sup, distance };
+          } else {
+            return null; // Invalid location data
+          }
+        }).filter(item => item !== null);
+
+        if (suppliersWithDistance.length > 0) {
+          // Sort suppliers by distance
+          suppliersWithDistance.sort((a, b) => a.distance - b.distance);
+
+          // Assign the nearest supplier
+          const nearestSupplier = suppliersWithDistance[0].supplier;
+          const distanceInKm = (suppliersWithDistance[0].distance / 1000).toFixed(2);
+
+          results.push({
+            productId,
+            assignedTo: {
+              type: 'supplier',
+              supplierId: nearestSupplier.supplierId,
+              distance: `${distanceInKm} km`,
+            },
+          });
+          continue; // Proceed to next productId
+        }
+      }
+
+      // If no suppliers found
+      results.push({
+        productId,
+        error: 'No nearby warehouses or suppliers found to fulfill the requirement.',
+      });
+    }
+
+    return res.status(200).json({ results });
+  } catch (error) {
+    console.error('Fulfillment Error:', error);
+    return res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+});
+
+
 
 
 
