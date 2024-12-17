@@ -50,13 +50,24 @@ const FulfillmentSchema = new mongoose.Schema({
   notes: { type: String },
 }, { _id: false });
 
+// Virtual field to populate Warehouse based on warehouseId
+FulfillmentSchema.virtual('warehouse', {
+  ref: 'Warehouse',
+  localField: 'warehouseId',
+  foreignField: 'warehouseId', // Ensure 'warehouseId' exists in Warehouse schema
+  justOne: true,
+});
+
+// Ensure virtuals are included when converting to JSON or Object
+FulfillmentSchema.set('toObject', { virtuals: true });
+FulfillmentSchema.set('toJSON', { virtuals: true });
+
+
 
 const PurchaseSchema = new mongoose.Schema({
   purchaseId: { type: String, default: uuidv4, unique: true, immutable: true },
   supplierId: { type: String, required: true, ref: 'Supplier' },
-  // warehouseId: { type: String, required: true, ref: 'Warehouse' },
   purchaseDate: { type: Date, default: Date.now },
-  // New field to handle multiple warehouse fulfillments
   fulfillments: [FulfillmentSchema],
   // Overall totals
   totalQuantity: { type: Number, required: true, min: [0, 'Total quantity cannot be negative'] },
@@ -79,27 +90,11 @@ const PurchaseSchema = new mongoose.Schema({
     amountPaid: { type: Number, min: [0, 'Amount paid cannot be negative'] },
   },
   notes: { type: String },
-  // Removed single stockTransaction reference
-  // stockTransaction: { 
-  //   type: mongoose.Schema.Types.ObjectId,
-  //   ref: 'StockTransaction',
-  //   required: false,
-  // },
 }, { timestamps: true });
 
-
-// Virtual field to populate Warehouse based on warehouseId
-FulfillmentSchema.virtual('warehouse', {
-  ref: 'Warehouse',
-  localField: 'warehouseId',
-  foreignField: 'warehouseId', // Ensure 'warehouseId' exists in Warehouse schema
-  justOne: true,
-});
-
-// Ensure virtuals are included when converting to JSON or Object
-FulfillmentSchema.set('toObject', { virtuals: true });
-FulfillmentSchema.set('toJSON', { virtuals: true });
-
+// Ensure virtuals are included in PurchaseSchema
+PurchaseSchema.set('toObject', { virtuals: true });
+PurchaseSchema.set('toJSON', { virtuals: true });
 
 // Pre-validate middleware to calculate totals based on fulfillments
 PurchaseSchema.pre('validate', function(next) {
