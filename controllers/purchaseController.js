@@ -5,7 +5,6 @@ const Supplier = require('../modal/Supplier');
 const Warehouse = require('../modal/warehouse');
 const Product = require('../modal/product');
 const InventoryItem = require('../modal/InventoryItem');
-
 /**
  * Handles the creation of a purchase.
  */
@@ -110,11 +109,11 @@ exports.createPurchase = async (req, res) => {
     // Populate necessary fields for response
     const populatedPurchase = await Purchase.findById(purchase._id)
       .populate({
-        path: 'fulfillments.warehouseId',
+        path: 'fulfillments.warehouse', // Use the virtual field
         select: 'warehouseId warehouseName', // Adjust fields as necessary
       })
       .populate({
-        path: 'fulfillments.products.productId',
+        path: 'fulfillments.products.product', // Use the virtual field
         select: 'productId name', // Adjust fields as necessary
       })
       .exec();
@@ -126,11 +125,11 @@ exports.createPurchase = async (req, res) => {
         supplierId: populatedPurchase.supplierId,
         purchaseDate: populatedPurchase.purchaseDate,
         fulfillments: populatedPurchase.fulfillments.map((fulfillment) => ({
-          warehouseId: fulfillment.warehouseId.warehouseId,
-          warehouseName: fulfillment.warehouseId.warehouseName,
+          warehouseId: fulfillment.warehouseId,
+          warehouseName: fulfillment.warehouse ? fulfillment.warehouse.warehouseName : null, // Access via virtual
           products: fulfillment.products.map((product) => ({
-            productId: product.productId.productId,
-            productName: product.productId.name,
+            productId: product.productId,
+            productName: product.product ? product.product.name : null, // Access via virtual
             quantity: product.quantity,
             unitPrice: product.unitPrice,
             totalPrice: product.totalPrice,
@@ -164,7 +163,7 @@ exports.createPurchase = async (req, res) => {
       },
     });
   } catch (error) {
-    // Check if the transaction is still active before aborting
+    // Abort the Transaction on Error if it's still active
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
