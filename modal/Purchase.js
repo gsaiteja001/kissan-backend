@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 // Sub-schema for purchased products
 const PurchasedProductSchema = new mongoose.Schema({
-  productId: { type: String, required: true, ref: 'Product' },
+  productId: { type: String, required: true },
   quantity: { type: Number, required: true, min: [0, 'Quantity cannot be negative'] },
   unitPrice: { type: Number, required: true, min: [0, 'Unit price cannot be negative'] },
   totalPrice: { type: Number, required: true, min: [0, 'Total price cannot be negative'] },
@@ -13,9 +13,20 @@ const PurchasedProductSchema = new mongoose.Schema({
   totalCost: { type: Number, required: true, min: [0, 'Total cost cannot be negative'] },
 }, { _id: false });
 
+PurchasedProductSchema.virtual('product', {
+  ref: 'Product',
+  localField: 'productId',
+  foreignField: 'productId',
+  justOne: true,
+});
+
+// Ensure virtuals are included when converting to JSON or Object
+PurchasedProductSchema.set('toObject', { virtuals: true });
+PurchasedProductSchema.set('toJSON', { virtuals: true });
+
 // Sub-schema for each warehouse fulfillment
 const FulfillmentSchema = new mongoose.Schema({
-  warehouseId: { type: String, required: true }, // Removed ref: 'Warehouse'
+  warehouseId: { type: String, required: true }, 
   products: [PurchasedProductSchema],
   totalQuantity: { type: Number, required: true, min: [0, 'Total quantity cannot be negative'] },
   subTotal: { type: Number, required: true, min: [0, 'Sub-total cannot be negative'] },
@@ -66,7 +77,7 @@ FulfillmentSchema.set('toJSON', { virtuals: true });
 
 const PurchaseSchema = new mongoose.Schema({
   purchaseId: { type: String, default: uuidv4, unique: true, immutable: true },
-  supplierId: { type: String, required: true, ref: 'Supplier' },
+  supplierId: { type: String, required: true},
   purchaseDate: { type: Date, default: Date.now },
   fulfillments: [FulfillmentSchema],
   // Overall totals
@@ -96,7 +107,6 @@ const PurchaseSchema = new mongoose.Schema({
 PurchaseSchema.set('toObject', { virtuals: true });
 PurchaseSchema.set('toJSON', { virtuals: true });
 
-// Pre-validate middleware to calculate totals based on fulfillments
 PurchaseSchema.pre('validate', function(next) {
   let totalQuantity = 0;
   let subTotal = 0;
