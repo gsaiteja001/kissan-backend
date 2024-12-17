@@ -173,3 +173,58 @@ exports.createPurchase = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
+/**
+ * Fetches all purchases associated with a specific warehouseId.
+ */
+exports.getPurchasesByWarehouseId = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { warehouseId } = req.params;
+
+    // Validate warehouseId
+    if (!warehouseId) {
+      return res.status(400).json({ error: 'warehouseId is required in the URL parameter.' });
+    }
+
+    // Optionally, verify that the warehouse exists
+    const warehouseExists = await Warehouse.findOne({ warehouseId }).session(session);
+    if (!warehouseExists) {
+      throw new Error(`Warehouse with ID ${warehouseId} not found.`);
+    }
+
+    // Fetch purchases where fulfillments contain the given warehouseId
+    const purchases = await Purchase.find({ 'fulfillments.warehouseId': warehouseId })
+      .populate({
+        path: 'fulfillments.warehouse', // Virtual field for Warehouse
+        select: 'warehouseId warehouseName', // Adjust fields as necessary
+      })
+      .populate({
+        path: 'fulfillments.products.product', // Virtual field for Product
+        select: 'productId name', // Adjust fields as necessary
+      })
+      .session(session)
+      .exec();
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({
+      message: `Purchases for Warehouse ID ${warehouseId} fetched successfully.`,
+      purchases,
+    });
+  } catch (error) {
+    // Abort the transaction if still active
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+
+    console.error('Error in getPurchasesByWarehouseId:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
