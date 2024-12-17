@@ -85,6 +85,12 @@ exports.createPurchase = async (req, res) => {
 
         // Optionally, validate other fields like taxes, transportCharges, etc.
       }
+
+      // Ensure paymentDetails.paymentMethod is set and valid
+      const validPaymentMethods = ['Credit Card', 'Debit Card', 'Bank Transfer', 'Cash', 'Others'];
+      if (!fulfillment.paymentDetails || !validPaymentMethods.includes(fulfillment.paymentDetails.paymentMethod)) {
+        throw new Error(`fulfillments.${fIndex}.paymentDetails.paymentMethod is invalid or missing.`);
+      }
     }
 
     // Create the Purchase document
