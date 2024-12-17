@@ -164,8 +164,10 @@ exports.createPurchase = async (req, res) => {
       },
     });
   } catch (error) {
-    // Abort the Transaction on Error
-    await session.abortTransaction();
+    // Check if the transaction is still active before aborting
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     session.endSession();
 
     console.error('Error in createPurchase:', error);
