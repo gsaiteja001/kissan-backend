@@ -236,9 +236,10 @@ router.get('/area-of-interest', async (req, res) => {
  *             productIds: [String]
  *          }
  */
+// router.post('/stockfulfillment', async (req, res) => {
 router.post('/stockfulfillment', async (req, res) => {
   try {
-    const { currentWarehouseId, currentCoordinates, productIds } = req.body;
+    const { currentWarehouseId, currentCoordinates, items } = req.body; // Change 'productIds' to 'items'
 
     // Input validation
     if (
@@ -246,8 +247,8 @@ router.post('/stockfulfillment', async (req, res) => {
       !currentCoordinates ||
       typeof currentCoordinates.latitude !== 'number' ||
       typeof currentCoordinates.longitude !== 'number' ||
-      !Array.isArray(productIds) ||
-      productIds.length === 0
+      !Array.isArray(items) ||
+      items.length === 0
     ) {
       return res.status(400).json({ message: 'Invalid input data.' });
     }
@@ -261,18 +262,32 @@ router.post('/stockfulfillment', async (req, res) => {
     // Initialize the result array
     const results = [];
 
-    // Iterate over each productId
-    for (const productId of productIds) {
-      // Fetch the inventory item for the current warehouse and productId
+    // Iterate over each item (with productId and variantId)
+    for (const item of items) {
+      const { productId, variantId } = item;
+
+      // Validate each item
+      if (!productId || !variantId) {
+        results.push({
+          productId,
+          variantId,
+          error: 'Product ID and Variant ID are required.',
+        });
+        continue;
+      }
+
+      // Fetch the inventory item for the current warehouse, productId, and variantId
       const inventoryItem = await InventoryItem.findOne({
         warehouseId: currentWarehouseId,
         productId: productId,
+        variantId: variantId,
       });
 
       if (!inventoryItem) {
         // If inventory item not found, skip or handle as needed
         results.push({
           productId,
+          variantId,
           error: 'Inventory item not found in current warehouse.',
         });
         continue;
@@ -284,6 +299,7 @@ router.post('/stockfulfillment', async (req, res) => {
         // No need to reorder if stock is sufficient
         results.push({
           productId,
+          variantId,
           message: 'Stock is above reorder level. No action needed.',
         });
         continue;
@@ -295,9 +311,10 @@ router.post('/stockfulfillment', async (req, res) => {
       const nearbyWarehouses = await Warehouse.find({
         warehouseId: { $ne: currentWarehouseId }, // Exclude current warehouse
         'inventoryItems.productId': productId,
+        'inventoryItems.variantId': variantId,
       }).populate({
         path: 'inventoryItems',
-        match: { productId: productId, stockQuantity: { $gte: requiredQuantity } },
+        match: { productId: productId, variantId: variantId, stockQuantity: { $gte: requiredQuantity } },
       });
 
       // Filter warehouses that have at least one inventoryItem with sufficient stock
@@ -327,6 +344,7 @@ router.post('/stockfulfillment', async (req, res) => {
 
         results.push({
           productId,
+          variantId,
           assignedTo: {
             type: 'warehouse',
             warehouseId: nearestWarehouse.warehouseId,
@@ -334,12 +352,13 @@ router.post('/stockfulfillment', async (req, res) => {
             distance: `${distanceInKm} km`,
           },
         });
-        continue; // Proceed to next productId
+        continue; // Proceed to next item
       }
 
       // Step 2: If no warehouse found, search for nearby suppliers
       const suppliers = await Supplier.find({
         'productsSupplied.productId': productId,
+        'productsSupplied.variantId': variantId, // Assuming suppliers also supply specific variants
       });
 
       if (suppliers.length > 0) {
@@ -373,19 +392,21 @@ router.post('/stockfulfillment', async (req, res) => {
 
           results.push({
             productId,
+            variantId,
             assignedTo: {
               type: 'supplier',
               supplierId: nearestSupplier.supplierId,
               distance: `${distanceInKm} km`,
             },
           });
-          continue; // Proceed to next productId
+          continue; // Proceed to next item
         }
       }
 
       // If no suppliers found
       results.push({
         productId,
+        variantId,
         error: 'No nearby warehouses or suppliers found to fulfill the requirement.',
       });
     }
@@ -396,6 +417,7 @@ router.post('/stockfulfillment', async (req, res) => {
     return res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
+
 
 
 
