@@ -54,7 +54,6 @@ const PurchaseSchema = new mongoose.Schema({
   supplierId: { type: String, required: true, ref: 'Supplier' },
   // warehouseId: { type: String, required: true, ref: 'Warehouse' },
   purchaseDate: { type: Date, default: Date.now },
-  products: [PurchasedProductSchema],
   // New field to handle multiple warehouse fulfillments
   fulfillments: [FulfillmentSchema],
   // Overall totals
@@ -86,7 +85,6 @@ const PurchaseSchema = new mongoose.Schema({
   // },
 }, { timestamps: true });
 
-// Pre-save middleware to calculate totals based on fulfillments
 // Pre-validate middleware to calculate totals based on fulfillments
 PurchaseSchema.pre('validate', function(next) {
   let totalQuantity = 0;
