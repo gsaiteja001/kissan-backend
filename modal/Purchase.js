@@ -15,7 +15,7 @@ const PurchasedProductSchema = new mongoose.Schema({
 
 // Sub-schema for each warehouse fulfillment
 const FulfillmentSchema = new mongoose.Schema({
-  warehouseId: { type: String, required: true, ref: 'Warehouse' },
+  warehouseId: { type: String, required: true }, // Removed ref: 'Warehouse'
   products: [PurchasedProductSchema],
   totalQuantity: { type: Number, required: true, min: [0, 'Total quantity cannot be negative'] },
   subTotal: { type: Number, required: true, min: [0, 'Sub-total cannot be negative'] },
@@ -32,6 +32,7 @@ const FulfillmentSchema = new mongoose.Schema({
     paymentMethod: {
       type: String,
       enum: ['Credit Card', 'Debit Card', 'Bank Transfer', 'Cash', 'Others'],
+      required: true, // Ensure it's required
     },
     transactionId: { type: String },
     amountPaid: { type: Number, min: [0, 'Amount paid cannot be negative'] },
@@ -48,6 +49,7 @@ const FulfillmentSchema = new mongoose.Schema({
   },
   notes: { type: String },
 }, { _id: false });
+
 
 const PurchaseSchema = new mongoose.Schema({
   purchaseId: { type: String, default: uuidv4, unique: true, immutable: true },
@@ -84,6 +86,20 @@ const PurchaseSchema = new mongoose.Schema({
   //   required: false,
   // },
 }, { timestamps: true });
+
+
+// Virtual field to populate Warehouse based on warehouseId
+FulfillmentSchema.virtual('warehouse', {
+  ref: 'Warehouse',
+  localField: 'warehouseId',
+  foreignField: 'warehouseId', // Ensure 'warehouseId' exists in Warehouse schema
+  justOne: true,
+});
+
+// Ensure virtuals are included when converting to JSON or Object
+FulfillmentSchema.set('toObject', { virtuals: true });
+FulfillmentSchema.set('toJSON', { virtuals: true });
+
 
 // Pre-validate middleware to calculate totals based on fulfillments
 PurchaseSchema.pre('validate', function(next) {
