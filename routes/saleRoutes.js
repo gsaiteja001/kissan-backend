@@ -4,7 +4,7 @@ const express = require('express');
 const { handleRecordSale } = require('../controllers/saleController');
 
 const purchaseController = require('../controllers/purchaseController');
-
+const Purchase = require('../modal/Purchase');
 const router = express.Router();
 
 // POST /api/sales/record
