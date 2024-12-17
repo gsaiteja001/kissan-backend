@@ -87,7 +87,8 @@ const PurchaseSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Pre-save middleware to calculate totals based on fulfillments
-PurchaseSchema.pre('save', function(next) {
+// Pre-validate middleware to calculate totals based on fulfillments
+PurchaseSchema.pre('validate', function(next) {
   let totalQuantity = 0;
   let subTotal = 0;
   let totalTax = 0;
@@ -144,5 +145,6 @@ PurchaseSchema.pre('save', function(next) {
 
   next();
 });
+
 
 module.exports = mongoose.model('Purchase', PurchaseSchema);
