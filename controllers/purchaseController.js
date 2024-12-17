@@ -16,111 +16,100 @@ exports.createPurchase = async (req, res) => {
   try {
     const {
       supplierId,
-      warehouseId,
-      products,
-      totalQuantity,
-      subTotal,
-      taxPercentage,
-      totalTax,
-      totalTransportCharges,
-      totalOtherCharges,
-      grandTotal,
-      paymentStatus,
-      paymentDetails,
+      purchaseDate, // Optional, defaults to Date.now in schema
+      fulfillments,
       notes,
-      stockTransaction, // transactionId from stockIn response
     } = req.body;
 
     // Basic validation
     if (
       !supplierId ||
-      !warehouseId ||
-      !products ||
-      !Array.isArray(products) ||
-      products.length === 0
+      !fulfillments ||
+      !Array.isArray(fulfillments) ||
+      fulfillments.length === 0
     ) {
       return res.status(400).json({
-        error: 'supplierId, warehouseId, and at least one product are required.',
+        error: 'supplierId and at least one fulfillment are required.',
       });
     }
 
-    // Validate stockTransactionId (transactionId)
-    if (!stockTransaction || typeof stockTransaction !== 'string') {
-      return res.status(400).json({
-        error: 'Valid transactionId is required for stockTransaction.',
-      });
-    }
-
-    // Find the Supplier
+    // Validate Supplier
     const supplier = await Supplier.findOne({ supplierId }).session(session);
     if (!supplier) {
       throw new Error('Supplier not found.');
     }
 
-    // Find the Warehouse
-    const warehouse = await Warehouse.findOne({ warehouseId }).session(session);
-    if (!warehouse) {
-      throw new Error('Warehouse not found.');
-    }
+    // Validate each Fulfillment
+    for (let fIndex = 0; fIndex < fulfillments.length; fIndex++) {
+      const fulfillment = fulfillments[fIndex];
 
-    // Find the StockTransaction by transactionId
-    const stockTrans = await StockTransaction.findOne({
-      transactionId: stockTransaction,
-    }).session(session);
-    if (!stockTrans) {
-      throw new Error(
-        'StockTransaction with the provided transactionId not found.'
-      );
-    }
-
-    // Prepare the products array for Purchase
-    const purchaseProducts = products.map((item, index) => {
-      if (!item.productId) {
-        throw new Error(`products.${index}.productId is required.`);
+      if (!fulfillment.warehouseId) {
+        throw new Error(`fulfillments.${fIndex}.warehouseId is required.`);
       }
-      return {
-        productId: item.productId, // Use 'productId' directly
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        taxes: item.taxes,
-        transportCharges: item.transportCharges,
-        otherCharges: item.otherCharges,
-        totalCost: item.totalCost,
-        finalCutoffUnitPrice: item.finalCutoffUnitPrice,
-      };
-    });
+
+      // Validate Warehouse
+      const warehouse = await Warehouse.findOne({ warehouseId: fulfillment.warehouseId }).session(session);
+      if (!warehouse) {
+        throw new Error(`Warehouse with ID ${fulfillment.warehouseId} not found in fulfillments.${fIndex}.`);
+      }
+
+      if (
+        !fulfillment.products ||
+        !Array.isArray(fulfillment.products) ||
+        fulfillment.products.length === 0
+      ) {
+        throw new Error(`fulfillments.${fIndex}.products must contain at least one product.`);
+      }
+
+      // Validate each Product in Fulfillment
+      for (let pIndex = 0; pIndex < fulfillment.products.length; pIndex++) {
+        const product = fulfillment.products[pIndex];
+
+        if (!product.productId) {
+          throw new Error(`fulfillments.${fIndex}.products.${pIndex}.productId is required.`);
+        }
+
+        // Validate Product existence
+        const productExists = await Product.findOne({ productId: product.productId }).session(session);
+        if (!productExists) {
+          throw new Error(`Product with ID ${product.productId} not found in fulfillments.${fIndex}.products.${pIndex}.`);
+        }
+
+        if (typeof product.quantity !== 'number' || product.quantity <= 0) {
+          throw new Error(`fulfillments.${fIndex}.products.${pIndex}.quantity must be a positive number.`);
+        }
+
+        if (typeof product.unitPrice !== 'number' || product.unitPrice < 0) {
+          throw new Error(`fulfillments.${fIndex}.products.${pIndex}.unitPrice must be a non-negative number.`);
+        }
+
+        // Optionally, validate other fields like taxes, transportCharges, etc.
+      }
+    }
 
     // Create the Purchase document
     const purchase = new Purchase({
       supplierId,
-      warehouseId,
-      products: purchaseProducts,
-      totalQuantity,
-      subTotal,
-      totalTax,
-      totalTransportCharges,
-      totalOtherCharges,
-      grandTotal,
-      paymentStatus,
-      paymentDetails,
+      purchaseDate, // If not provided, schema defaults to Date.now
+      fulfillments,
       notes,
-      stockTransaction: stockTrans._id, // Reference by _id
     });
 
     await purchase.save({ session });
-
-    // Optionally, you might want to update related documents or perform additional operations here
 
     // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
-    // Populate the stockTransaction field with transactionId for response clarity
+    // Populate necessary fields for response
     const populatedPurchase = await Purchase.findById(purchase._id)
       .populate({
-        path: 'stockTransaction',
-        select: 'transactionId transactionType warehouseId',
+        path: 'fulfillments.warehouseId',
+        select: 'warehouseId warehouseName', // Adjust fields as necessary
+      })
+      .populate({
+        path: 'fulfillments.products.productId',
+        select: 'productId name', // Adjust fields as necessary
       })
       .exec();
 
@@ -129,8 +118,32 @@ exports.createPurchase = async (req, res) => {
       purchase: {
         purchaseId: populatedPurchase.purchaseId,
         supplierId: populatedPurchase.supplierId,
-        warehouseId: populatedPurchase.warehouseId,
-        products: populatedPurchase.products,
+        purchaseDate: populatedPurchase.purchaseDate,
+        fulfillments: populatedPurchase.fulfillments.map((fulfillment) => ({
+          warehouseId: fulfillment.warehouseId.warehouseId,
+          warehouseName: fulfillment.warehouseId.warehouseName,
+          products: fulfillment.products.map((product) => ({
+            productId: product.productId.productId,
+            productName: product.productId.name,
+            quantity: product.quantity,
+            unitPrice: product.unitPrice,
+            totalPrice: product.totalPrice,
+            taxes: product.taxes,
+            transportCharges: product.transportCharges,
+            otherCharges: product.otherCharges,
+            totalCost: product.totalCost,
+          })),
+          totalQuantity: fulfillment.totalQuantity,
+          subTotal: fulfillment.subTotal,
+          totalTax: fulfillment.totalTax,
+          totalTransportCharges: fulfillment.totalTransportCharges,
+          totalOtherCharges: fulfillment.totalOtherCharges,
+          grandTotal: fulfillment.grandTotal,
+          paymentStatus: fulfillment.paymentStatus,
+          paymentDetails: fulfillment.paymentDetails,
+          deliveryStatus: fulfillment.deliveryStatus,
+          notes: fulfillment.notes,
+        })),
         totalQuantity: populatedPurchase.totalQuantity,
         subTotal: populatedPurchase.subTotal,
         totalTax: populatedPurchase.totalTax,
@@ -140,11 +153,6 @@ exports.createPurchase = async (req, res) => {
         paymentStatus: populatedPurchase.paymentStatus,
         paymentDetails: populatedPurchase.paymentDetails,
         notes: populatedPurchase.notes,
-        stockTransaction: {
-          transactionId: populatedPurchase.stockTransaction.transactionId,
-          transactionType: populatedPurchase.stockTransaction.transactionType,
-          warehouseId: populatedPurchase.stockTransaction.warehouseId,
-        },
         purchaseDate: populatedPurchase.purchaseDate,
         // Include other fields as necessary
       },
