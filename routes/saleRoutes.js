@@ -37,5 +37,11 @@ router.get('/purchases/active/:warehouseId', async (req, res) => {
 });
 
 
+// New Route: Update Delivery Status
+router.patch(
+  '/purchases/:purchaseId/fulfillment/:fulfillmentIndex/status',
+  purchaseController.updateDeliveryStatus
+);
+
 
 module.exports = router;
