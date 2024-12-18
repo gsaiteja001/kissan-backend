@@ -16,6 +16,9 @@ router.post('/purchase-record/create', purchaseController.createPurchase);
 // New Route: Fetch purchases by warehouseId
 router.get('/warehouse/:warehouseId', purchaseController.getPurchasesByWarehouseId);
 
+// New Route: Fetch Non-Active Purchases by WarehouseId
+router.get('/purchases/non-active/:warehouseId', purchaseController.getNonActivePurchasesByWarehouseId);
+
 router.get('/purchases/active/:warehouseId', async (req, res) => {
   const { warehouseId } = req.params;
   const activeStatuses = ['Pending', 'In Transit', 'Partial'];
