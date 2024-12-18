@@ -175,6 +175,32 @@ exports.createPurchase = async (req, res) => {
 };
 
 
+// Controller to fetch non-active purchases by warehouseId
+exports.getNonActivePurchasesByWarehouseId = async (req, res) => {
+  const { warehouseId } = req.params;
+  
+  // Define non-active delivery statuses
+  const nonActiveStatuses = ['Delivered', 'Failed', 'Refunded'];
+
+  try {
+    const purchases = await Purchase.find({
+      'fulfillments.warehouseId': warehouseId,
+      'fulfillments.deliveryStatus': { $in: nonActiveStatuses },
+    })
+    .populate('fulfillments.products.product')
+    .populate('fulfillments.warehouse'); 
+
+    res.json({
+      message: `Non-active purchases for Warehouse ID ${warehouseId} fetched successfully.`,
+      purchases,
+    });
+  } catch (error) {
+    console.error('Error fetching non-active purchases:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+
 
 // Controller to update delivery status of a specific fulfillment
 exports.updateDeliveryStatus = async (req, res) => {
