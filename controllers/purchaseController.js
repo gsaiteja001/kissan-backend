@@ -175,6 +175,59 @@ exports.createPurchase = async (req, res) => {
 };
 
 
+
+// Controller to update delivery status of a specific fulfillment
+exports.updateDeliveryStatus = async (req, res) => {
+  const { purchaseId, fulfillmentIndex } = req.params;
+  const { deliveryStatus } = req.body;
+
+  // Define allowed delivery statuses
+  const allowedStatuses = ['Pending', 'In Transit', 'Delivered', 'Partial', 'Failed'];
+
+  // Validate new delivery status
+  if (!allowedStatuses.includes(deliveryStatus)) {
+    return res.status(400).json({
+      error: `Invalid delivery status. Allowed statuses are: ${allowedStatuses.join(', ')}`,
+    });
+  }
+
+  try {
+    // Find the purchase by purchaseId
+    const purchase = await Purchase.findOne({ purchaseId });
+
+    if (!purchase) {
+      return res.status(404).json({ error: 'Purchase not found.' });
+    }
+
+    // Validate fulfillmentIndex
+    const fulfillmentIdx = parseInt(fulfillmentIndex, 10);
+    if (
+      isNaN(fulfillmentIdx) ||
+      fulfillmentIdx < 0 ||
+      fulfillmentIdx >= purchase.fulfillments.length
+    ) {
+      return res.status(400).json({ error: 'Invalid fulfillment index.' });
+    }
+
+    // Update the delivery status
+    purchase.fulfillments[fulfillmentIdx].deliveryStatus = deliveryStatus;
+
+    // Optionally, handle side effects based on the new status
+
+    // Save the updated purchase
+    await purchase.save();
+
+    res.json({
+      message: `Delivery status updated to "${deliveryStatus}" for fulfillment index ${fulfillmentIdx}.`,
+      purchase,
+    });
+  } catch (error) {
+    console.error('Error updating delivery status:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
+
 /**
  * Fetches all purchases associated with a specific warehouseId.
  */
