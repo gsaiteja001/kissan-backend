@@ -1583,7 +1583,7 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
 
   try {
     // Find the farmer by farmerId
-    const farmer = await Farmer.findOne({ farmerId });
+    const farmer = await farmers.findOne({ farmerId });
 
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
