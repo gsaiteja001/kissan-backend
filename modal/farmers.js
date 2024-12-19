@@ -195,19 +195,19 @@ const CropDetailsSchema = new Schema({
     type: [FinancierSchema], // Array of recommended financiers
     required: false,
   },
-
-  farmId: {
-    type: String,
-    required: false,
-    trim: true,
+  farmId: { 
+    type: String, 
+    required: true,
     validate: {
-      validator: function(value) {
+      validator: function(v) {
         // 'this' refers to the current crop document
-        return this.ownerDocument().farms.some(farm => farm.farmId === value);
+        // 'this.parent()' refers to the farmer document
+        return this.parent().farms.some(farm => farm.farmId === v);
       },
       message: props => `Farm ID '${props.value}' does not exist in the farmer's farms.`,
     },
   },
+  
   area: { type: Number, required: false }, // in sq meters
   soilType: { type: String, required: false },
   individualProgress: { type: Number, required: false },
