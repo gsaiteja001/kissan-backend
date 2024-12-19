@@ -32,6 +32,7 @@ const AddressSchema = new Schema({
 // Updated Subschema for Farm Details
 const FarmDetailsSchema = new Schema({
   farmId: { type: String, required: false },
+  farmName: { type: String, required: false },
   area: { type: Number, required: false }, // in acres or hectares
   soilType: { type: String, required: false },
   farmType: {
