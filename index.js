@@ -1569,9 +1569,6 @@ app.post('/api/farmers/:farmerId/address', async (req, res) => {
 
 
 
-
-
-
 // POST /api/farmers/:farmerId/farms
 app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   const { farmerId } = req.params;
@@ -1580,13 +1577,13 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   console.log('farmerId', farmerId);
 
   // Basic validation
-  if (!area || !location || !boundary) {
-    return res.status(400).json({ message: 'Area, location, and boundary are required.' });
+  if (!area || !location || !boundary || !farmName) {
+    return res.status(400).json({ message: 'Area, location, boundary, and farmName are required.' });
   }
 
   try {
     // Find the farmer by farmerId
-    const farmer = await farmers.findOne({ farmerId });
+    const farmer = await Farmer.findOne({ farmerId });
 
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
@@ -1594,10 +1591,15 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
 
     const farmId = `FARMID${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
+    // Check if farmId already exists to maintain uniqueness
+    if (farmer.farms.some(farm => farm.farmId === farmId)) {
+      return res.status(400).json({ message: 'Duplicate farmId generated. Please try again.' });
+    }
+
     // Create a new farm entry
     const newFarm = {
       farmId,
-      farmName: farmName || '', // ADDED farmName to newFarm
+      farmName: farmName || '',
       area,
       soilType: req.body.soilType || '',
       farmType: req.body.farmType || 'FullTimeFarmer',
