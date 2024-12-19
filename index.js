@@ -1575,9 +1575,10 @@ app.post('/api/farmers/:farmerId/address', async (req, res) => {
 // POST /api/farmers/:farmerId/farms
 app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   const { farmerId } = req.params;
-  const { area, location, boundary } = req.body;
+  const { area, location, boundary, farmName } = req.body; 
 
-  console.log('farmerId',farmerId)
+  console.log('farmerId', farmerId);
+
   // Basic validation
   if (!area || !location || !boundary) {
     return res.status(400).json({ message: 'Area, location, and boundary are required.' });
@@ -1596,6 +1597,7 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
     // Create a new farm entry
     const newFarm = {
       farmId,
+      farmName: farmName || '', // ADDED farmName to newFarm
       area,
       soilType: req.body.soilType || '',
       farmType: req.body.farmType || 'FullTimeFarmer',
@@ -1609,7 +1611,6 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
     farmer.farms.push(newFarm);
 
     // Optionally, update profileCompleteness
-    // For example, increase by 5% for adding a farm
     if (farmer.profileCompleteness < 100) {
       farmer.profileCompleteness = Math.min(farmer.profileCompleteness + 5, 100);
     }
