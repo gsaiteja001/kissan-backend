@@ -30,10 +30,8 @@ const FarmersTicketSchema = new Schema({
     trim: true,
   },
 
-  // The farmer raising this ticket
   farmerId: {
     type: String,
-    ref: 'Farmer',
     required: true,
   },
 
@@ -50,14 +48,12 @@ const FarmersTicketSchema = new Schema({
   // If the ticket is about an order, we store a reference to that order
   associatedOrderId: {
     type: String,
-    ref: 'Order',
     required: false,
   },
 
   // If the ticket is about a service request, we store a reference to that
   associatedServiceRequestId: {
     type: String,
-    ref: 'ServiceRequest',
     required: false,
   },
 
