@@ -9,10 +9,14 @@ const {
   addReview,
   getProductInventory,
   updateVariants,
+  getAllUniqueCategories,
 } = require('../controllers/productController');
 
 
 const router = express.Router();
+
+
+router.get('/categories', getAllUniqueCategories);
 
 // Create a new product
 router.post('/', createProduct);
@@ -34,6 +38,8 @@ router.post('/:id/reviews', addReview);
 
 // Get inventory details for a product across all warehouses
 router.get('/:id/inventory', getProductInventory);
+
+
 
 // Get top-selling products
 // router.get('/top-selling', getTopSellingProducts);

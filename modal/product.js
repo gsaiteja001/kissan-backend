@@ -1,7 +1,44 @@
-
-const mongoose = require('mongoose'); 
+const mongoose = require('mongoose');
 const InventoryItem = require('./InventoryItem');
-const LocalizedStringSchema = require('./LocalizedString'); 
+const LocalizedStringSchema = require('./LocalizedString');
+
+/**
+ * Category Sub-Schema
+ * This schema is embedded directly into the Product document.
+ */
+const CategorySchema = new mongoose.Schema(
+  {
+    categoryId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    categoryName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false } // no separate _id for sub-schema
+);
+
+/**
+ * Pre-validate hook to auto-generate categoryId if not provided
+ * Format: CATID + first four letters of categoryName (uppercase) + random 6-digit number
+ */
+CategorySchema.pre('validate', function (next) {
+  if (!this.categoryId && this.categoryName) {
+    const prefix = 'CATID';
+    const namePart = this.categoryName.slice(0, 4).toUpperCase();
+    const randomNum = Math.floor(100000 + Math.random() * 900000); // 6-digit random number
+    this.categoryId = `${prefix}${namePart}${randomNum}`;
+  }
+  next();
+});
 
 // Review Schema
 const ReviewSchema = new mongoose.Schema(
@@ -32,7 +69,7 @@ const ReviewSchema = new mongoose.Schema(
 
 // Variant Schema
 const VariantSchema = new mongoose.Schema(
-   {
+  {
     variantId: {
       type: String,
       unique: true,
@@ -43,7 +80,7 @@ const VariantSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      // enum: ['500 ml', '1 liter', '2 liters', '1 kg', '5 kg', '20 kg']
+      // enum: ['500 ml', '1 liter', '2 liters', '1 kg', '5 kg', '20 kg'],
     },
     sku: {
       type: String,
@@ -60,7 +97,6 @@ const VariantSchema = new mongoose.Schema(
       type: Number,
       min: [0, 'Final price cannot be negative'],
     },
-    // Remove stockQuantity from here
     discount: {
       amount: {
         type: Number,
@@ -94,7 +130,6 @@ const VariantSchema = new mongoose.Schema(
       width: { type: Number, min: [0, 'Width cannot be negative'] },
       height: { type: Number, min: [0, 'Height cannot be negative'] },
     },
-    // Add other variant-specific fields as needed
   },
   { timestamps: true }
 );
@@ -121,7 +156,6 @@ VariantSchema.pre('save', function (next) {
   }
 
   this.finalPrice = finalPrice > 0 ? finalPrice : 0;
-
   next();
 });
 
@@ -134,24 +168,18 @@ const ProductSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
+    /**
+     * Replace the old category field (enum) with the new CategorySchema
+     */
+    category: {
+      type: CategorySchema,
+      required: true,
+    },
+
     name: {
       type: LocalizedStringSchema,
       required: true,
-    },
-    category: {
-      type: String,
-      required: true,
-      enum: [
-        'Fertilizers',
-        'Growth Promoters',
-        'Fungicides',
-        'Pesticides',
-        'Herbicides',
-        'Nutrients',
-        'Farm Machineries',
-        'Others',
-        'Gardening',
-      ],
     },
     tags: {
       type: [String],
@@ -193,10 +221,9 @@ const ProductSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    // Add other product-level fields as needed
 
     // Embedded Variants Array
-    variants: [VariantSchema], // Array of VariantSchema
+    variants: [VariantSchema],
 
     images: [
       {
@@ -204,7 +231,8 @@ const ProductSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    // Additional fields that are not variant-specific
+
+    // Additional fields
     weight: {
       type: Number,
       min: [0, 'Weight cannot be negative'],
@@ -227,7 +255,7 @@ const ProductSchema = new mongoose.Schema(
       trim: true,
     },
     composition: {
-      type: LocalizedStringSchema, 
+      type: LocalizedStringSchema,
       trim: true,
     },
     expirationDate: {
@@ -240,7 +268,7 @@ const ProductSchema = new mongoose.Schema(
       },
     ],
     power: {
-      type: Number, 
+      type: Number,
       min: [0, 'Power cannot be negative'],
     },
     engineType: {
@@ -253,7 +281,7 @@ const ProductSchema = new mongoose.Schema(
     },
     features: [
       {
-        type: LocalizedStringSchema, 
+        type: LocalizedStringSchema,
         trim: true,
       },
     ],
@@ -273,15 +301,15 @@ const ProductSchema = new mongoose.Schema(
       min: [0, 'Review count cannot be negative'],
     },
     reviews: [ReviewSchema],
-    hazardous: { 
+    hazardous: {
       type: Boolean,
       default: false,
     },
-    fragile: { 
+    fragile: {
       type: Boolean,
       default: false,
     },
-    itemType: { 
+    itemType: {
       type: String,
       enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'],
       required: false,
@@ -305,7 +333,6 @@ ProductSchema.virtual('inventoryItems', {
 ProductSchema.set('toObject', { virtuals: true });
 ProductSchema.set('toJSON', { virtuals: true });
 
-
 // Pre-save middleware to calculate averageRating and reviewCount
 ProductSchema.pre('save', function (next) {
   if (this.reviews && this.reviews.length > 0) {
@@ -319,17 +346,15 @@ ProductSchema.pre('save', function (next) {
   next();
 });
 
-
-
 // Example: Updated addVariant method without stockQuantity
-ProductSchema.methods.addVariant = async function(variantData) {
+ProductSchema.methods.addVariant = async function (variantData) {
   this.variants.push(variantData);
   return this.save();
 };
 
 // Example: Updated updateVariant method without stockQuantity
-ProductSchema.methods.updateVariant = async function(variantId, updatedData) {
-  const variant = this.variants.find(v => v.variantId === variantId);
+ProductSchema.methods.updateVariant = async function (variantId, updatedData) {
+  const variant = this.variants.find((v) => v.variantId === variantId);
   if (variant) {
     Object.assign(variant, updatedData);
     return this.save();
@@ -338,32 +363,27 @@ ProductSchema.methods.updateVariant = async function(variantId, updatedData) {
 };
 
 // Example: Updated removeVariant method without stockQuantity
-ProductSchema.methods.removeVariant = async function(variantId) {
-  const variant = this.variants.find(v => v.variantId === variantId);
+ProductSchema.methods.removeVariant = async function (variantId) {
+  const variant = this.variants.find((v) => v.variantId === variantId);
   if (variant) {
-    this.variants = this.variants.filter(v => v.variantId !== variantId);
+    this.variants = this.variants.filter((v) => v.variantId !== variantId);
     return this.save();
   }
   throw new Error('Variant not found');
 };
-
-
-
-// Static Methods (Optional)
 
 /**
  * Finds a product by SKU across all variants.
  * @param {String} sku - The SKU to search for.
  * @returns {Promise} - Resolves to the found product or null.
  */
-ProductSchema.statics.findBySKU = function(sku) {
+ProductSchema.statics.findBySKU = function (sku) {
   return this.findOne({ 'variants.sku': sku, archived: { $ne: true } });
 };
 
-
 // Indexes for Optimization
-ProductSchema.index({ 'variants.sku': 1 }, { unique: true }); 
-ProductSchema.index({ productId: 1 }); 
+ProductSchema.index({ 'variants.sku': 1 }, { unique: true });
+ProductSchema.index({ productId: 1 });
 ProductSchema.index({ archived: 1 });
 
 module.exports = mongoose.model('Product', ProductSchema);

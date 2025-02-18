@@ -435,6 +435,53 @@ exports.addReview = async (req, res, next) => {
   }
 };
 
+
+exports.getAllUniqueCategories = async (req, res) => {
+  try {
+    console.log("Fetching unique categories...");
+
+    const productsCount = await Product.countDocuments();
+    console.log("Total Products in Database:", productsCount);
+
+    const categories = await Product.aggregate([
+      {
+        $match: { category: { $exists: true, $ne: null } }
+      },      
+      {
+        $group: {
+          _id: {
+            categoryId: "$category.categoryId",
+            categoryName: "$category.categoryName",
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          categoryId: "$_id.categoryId",
+          categoryName: "$_id.categoryName",
+        },
+      },
+      {
+        $sort: { categoryName: 1 },
+      },
+    ]);
+
+    console.log("Categories Found:", categories);
+
+    if (categories.length === 0) {
+      return res.status(404).json({ success: false, message: "No categories found." });
+    }
+
+    res.status(200).json(categories);
+  } catch (error) {
+    console.error("Error fetching unique categories:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+
+
 /**
  * @desc    Get inventory details for a product across all warehouses
  * @route   GET /api/products/:id/inventory
