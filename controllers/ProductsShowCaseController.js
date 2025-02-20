@@ -29,6 +29,38 @@ exports.getShowCaseById = async (req, res) => {
   }
 };
 
+
+// Get details of showcases based on an array of showcaseIds
+exports.getShowCasesByIds = async (req, res) => {
+  try {
+    const { showcaseIds } = req.query;  // Get showcaseIds from the query parameter
+
+    // If showcaseIds is a comma-separated string, we split it into an array
+    const showcaseIdsArray = showcaseIds.split(',');
+
+    if (!showcaseIdsArray || showcaseIdsArray.length === 0) {
+      return res.status(400).json({ message: 'Invalid or missing showcaseIds' });
+    }
+
+    // Fetch showcases based on the provided showcaseIds array
+    const showcases = await ShowCase.find({
+      showcaseId: { $in: showcaseIdsArray }  // MongoDB query to find all showcases where the showcaseId is in the array
+    });
+
+    if (showcases.length === 0) {
+      return res.status(404).json({ message: 'No showcases found for the given showcaseIds' });
+    }
+
+    // Return the list of showcases
+    res.status(200).json(showcases);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching showcases', error });
+  }
+};
+
+
+
+
 exports.createShowCase = async (req, res) => {
   try {
     const showcaseData = {

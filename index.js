@@ -70,15 +70,8 @@ app.use('/product', productRoutes);
 
 const productCategoryRoutes = require('./routes/migrateCategories');
 app.use('/productCategory', productCategoryRoutes);
-
-
-
-
 const warehouseRoutes = require('./routes/warehouseRoutes');
 app.use('/api/warehouses', warehouseRoutes);
-
-
-
 const supplierRoutes = require('./routes/suppliers');
 app.use('/suppliers', supplierRoutes);
 

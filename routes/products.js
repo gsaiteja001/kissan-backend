@@ -265,6 +265,9 @@ router.delete('/packs/:packId', ProductsPackController.deletePack);
 router.get('/showcases', ProductsShowCaseController.getAllShowCases);
 router.get('/showcases/:warehouseId', ProductsShowCaseController.getShowCasesByWarehouse);
 router.get('/showcases/:showcaseId', ProductsShowCaseController.getShowCaseById);
+// Route for fetching showcases based on an array of showcaseIds (via query parameter)
+router.get('/getShowCasesByIds', ProductsShowCaseController.getShowCasesByIds);
+
 // Use upload.single('fileFieldName') to process single file uploads
 router.post('/showcases', upload.fields([
   { name: 'headerImage', maxCount: 1 },
