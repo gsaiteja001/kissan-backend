@@ -43,44 +43,7 @@ const staffSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Inventory Item Schema
-const inventoryItemSchema = new mongoose.Schema({
-  sku: { type: String, required: false },
-  productName: { type: String, required: false },
-  category: {
-    type: String,
-    enum: [
-      'Fertilizer',
-      'Pesticide',
-      'Farming Tool',
-      'Herbicide',
-      'Growth Promoter',
-      'Nutrient',
-      'Seed',
-      'Equipment',
-      'Machinery',
-      'others',
-    ],
-    required: false,
-  },
-  quantity: { type: Number, required: false, min: 0 },
-  unit: { type: String, default: 'kg' }, // or 'liters', 'units', etc.
-  storageLocation: {
-    aisle: { type: String },
-    shelf: { type: String },
-    bin: { type: String },
-  },
-  temperatureControlRequired: { type: Boolean, default: false },
-  specialHandling: { type: String }, // e.g., "Keep away from sunlight"
-  expirationDate: { type: Date },
-  supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
-  costPrice: { type: Number },
-  sellingPrice: { type: Number },
-  reorderLevel: { type: Number, default: 10 }, // Alert when stock is below this level
-  batchNumber: { type: String },
-  manufacturingDate: { type: Date },
-  warehouse: { type: mongoose.Schema.Types.ObjectId, ref: 'Warehouse' }, // Reference to Warehouse
-});
+
 
 // Warehouse Schema
 const warehouseSchema = new mongoose.Schema(
@@ -133,17 +96,18 @@ const warehouseSchema = new mongoose.Schema(
         certificateNumber: { type: String },
       },
     ],
+    showcaseId: [{ type: String }],
     linkedSuppliers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' }],
     integrations: {
-      erpSystem: { type: String }, // e.g., "SAP", "Oracle"
-      crmSystem: { type: String }, // e.g., "Salesforce"
+      erpSystem: { type: String }, 
+      crmSystem: { type: String },
       otherSystems: [{ type: String }],
     },
     reportingAndAnalytics: {
       lastInventoryAudit: { type: Date },
-      reportsGenerated: [{ type: String }], // e.g., "Monthly Stock Report"
+      reportsGenerated: [{ type: String }],
     },
-    staff: [staffSchema], // Integrated Staff Sub-schema
+    staff: [staffSchema],
     archived: { type: Boolean, default: false },
     location: {
       type: {

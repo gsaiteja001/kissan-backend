@@ -1,10 +1,20 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const translateProduct = require('../utils/translateProduct');
 const Product = require('../modal/product'); 
 const { getProductIdsFromWarehouses } = require('../services/inventoryService');
 
 const {updateProductVariants} = require('../controllers/productController');
+
+
+const ProductsPackController = require('../controllers/ProductsPackController');
+const ProductsShowCaseController = require('../controllers/ProductsShowCaseController');
+
+
+const upload = multer({ dest: 'uploads/' });
+
+
 
 // Similar Products Route
 router.get('/similarProducts', async (req, res) => {
@@ -240,6 +250,33 @@ router.get('/byCategory', async (req, res) => {
 //     return res.status(500).json({ message: 'Internal server error.' });
 //   }
 // });
+
+
+
+
+// Pack routes
+router.get('/packs', ProductsPackController.getAllPacks);
+router.get('/packs/:packId', ProductsPackController.getPackById);
+router.post('/packs', ProductsPackController.createPack);
+router.put('/packs/:packId', ProductsPackController.updatePack);
+router.delete('/packs/:packId', ProductsPackController.deletePack);
+
+// Showcase routes
+router.get('/showcases', ProductsShowCaseController.getAllShowCases);
+router.get('/showcases/:warehouseId', ProductsShowCaseController.getShowCasesByWarehouse);
+router.get('/showcases/:showcaseId', ProductsShowCaseController.getShowCaseById);
+// Use upload.single('fileFieldName') to process single file uploads
+router.post('/showcases', upload.fields([
+  { name: 'headerImage', maxCount: 1 },
+  { name: 'backgroundImage', maxCount: 1 },
+  { name: 'productBackgroundImage', maxCount: 1 },
+  { name: 'productBaseImage', maxCount: 1 }
+]), ProductsShowCaseController.createShowCase);
+router.put('/showcases/:showcaseId', ProductsShowCaseController.updateShowCase);
+router.delete('/showcases/:showcaseId', ProductsShowCaseController.deleteShowCase);
+
+
+
 
 
 module.exports = router;

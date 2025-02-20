@@ -45,19 +45,11 @@ const CropTemplate = require('./modal/croptemplate');
 const Group = require('./modal/Group');
 
 const cropDisease = require('./modal/cropDisease');
-
 const PostAds = require('./modal/postAds');
-
 const Diseases = require('./modal/Disease');
-
 const PlantDiseases = require('./modal/multilangDiseases');
-
 const farmerController = require('./controllers/farmerController');
-
-
 const agricultureLandRental = require('./modal/agricultureLandRental')
-
-
 const FertilizerRecommendation = require('./modal/fertilizerRecommendations');
 
 const translateProduct = require('./utils/translateProduct');
@@ -97,6 +89,9 @@ app.use('/api/sale', saleRoutes);
 
 const migrateCoordinatesRoutes = require('./routes/migrateCoordinates');
 app.use('/api/migrateCoordinates', migrateCoordinatesRoutes);
+
+const ShowCaseRoute = require('./routes/ShowCaseRoute');
+app.use('/api/products/showcases', ShowCaseRoute);
 
 
 
