@@ -89,6 +89,13 @@ app.use('/api/products/showcases', ShowCaseRoute);
 
 
 
+// Import the migration routes and mount them
+const migrationRoutes = require('./routes/migrationRoutes');
+app.use('/migrate', migrationRoutes);
+
+
+
+
 // Initialize Firebase Admin SDK
 const admin = require('firebase-admin');
 const serviceAccount = require('./serviceAccountKey.json');
@@ -396,7 +403,7 @@ app.post('/new-plant-disease', async (req, res) => {
   const newDiseaseData = req.body;
 
   // Validation checks for required fields (you can add more validation rules as needed)
-  if (!newDiseaseData.Disease || !newDiseaseData.Symptoms || !newDiseaseData.Title) {
+  if (!newDiseaseData.Disease || !newDiseaseData.Symptoms ) {
     return res.status(400).json({ error: 'Disease name, symptoms, and title are required.' });
   }
   const generatediseaseId = () => {

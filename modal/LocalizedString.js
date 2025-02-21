@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const LocalizedStringSchema = new mongoose.Schema(
   {
-    en: { type: String, required: true, trim: true },
+    en: { type: String, required: false, trim: true },
     te: { type: String, trim: true },
     kn: { type: String, trim: true },
     ta: { type: String, trim: true },

@@ -2,9 +2,9 @@
 const mongoose = require('mongoose');
 
 const descriptionSchema = new mongoose.Schema({
-    Title: { type: String, required: true },
+    Title: { type: String, required: false },
     imageURL: { type: String, required: false },
-    Content: { type: String, required: true },
+    Content: { type: String, required: false },
 }, { _id: false });
 
 const controlMethodSchema = new mongoose.Schema({

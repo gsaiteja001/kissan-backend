@@ -3,9 +3,9 @@ const LocalizedStringSchema = require('./LocalizedString');
 
 // Description Schema with Multilingual Support
 const descriptionSchema = new mongoose.Schema({
-    Title: { type: LocalizedStringSchema, required: true },
+    Title: { type: LocalizedStringSchema, required: false },
     imageURL: { type: String, required: false },
-    Content: { type: LocalizedStringSchema, required: true },
+    Content: { type: LocalizedStringSchema, required: false },
 }, { _id: false });
 
 // Control Method Schema
