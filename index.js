@@ -7,7 +7,7 @@ const axios = require('axios'); // Make sure axios is imported here
 
 const jwt = require('jsonwebtoken');
 const app = express();
-
+const checkApiKey = require('./middlewares/checkApiKey');
 
 const multer = require('multer');
 const path = require('path');
@@ -53,6 +53,12 @@ const agricultureLandRental = require('./modal/agricultureLandRental')
 const FertilizerRecommendation = require('./modal/fertilizerRecommendations');
 
 const translateProduct = require('./utils/translateProduct');
+
+
+
+
+// Apply to all routes
+app.use(checkApiKey);
 
 
 // -------------------------  routes ---------------------------------------------------------------------
@@ -373,28 +379,34 @@ app.put('/diseases/:diseaseId', async (req, res) => {
 //--------------------------plant disease -----------------------------------------
 
 // Update a specific disease by DiseaseId
+// Update a specific disease by DiseaseId
 app.put('/plant-diseases/:diseaseId', async (req, res) => {
   const { diseaseId } = req.params;
-  const updateData = req.body;
+  const updateData = { ...req.body };
+
+  // Remove the _id field if it exists, as it is immutable.
+  if (updateData._id) {
+    delete updateData._id;
+  }
 
   try {
-      const updatedDisease = await PlantDiseases.findOneAndUpdate(
-          { DiseaseId: diseaseId }, 
-          updateData,            
-          { new: true }     
-      );
+    const updatedDisease = await PlantDiseases.findOneAndUpdate(
+      { DiseaseId: diseaseId }, 
+      updateData,            
+      { new: true }     
+    );
 
-      if (!updatedDisease) {
-          return res.status(404).json({ error: "Disease not found." });
-      }
+    if (!updatedDisease) {
+      return res.status(404).json({ error: "Disease not found." });
+    }
 
-      res.status(200).json({
-          message: "Disease updated successfully",
-          data: updatedDisease
-      });
+    res.status(200).json({
+      message: "Disease updated successfully",
+      data: updatedDisease
+    });
   } catch (error) {
-      console.error("Error updating disease:", error);
-      res.status(500).json({ error: "Failed to update disease." });
+    console.error("Error updating disease:", error);
+    res.status(500).json({ error: "Failed to update disease." });
   }
 });
 

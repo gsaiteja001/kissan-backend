@@ -5,6 +5,8 @@ const translateProduct = require('../utils/translateProduct');
 const Product = require('../modal/product'); 
 const { getProductIdsFromWarehouses } = require('../services/inventoryService');
 
+
+
 const {updateProductVariants} = require('../controllers/productController');
 
 
