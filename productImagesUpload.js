@@ -20,7 +20,7 @@ const upload = multer({ storage });
 
 
 // Define the upload route
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('', upload.single('image'), async (req, res) => {
   const file = req.file;
 
   // Validate that a file was uploaded
