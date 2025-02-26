@@ -58,7 +58,7 @@ const translateProduct = require('./utils/translateProduct');
 
 
 // Apply to all routes
-app.use(checkApiKey);
+// app.use(checkApiKey);
 
 
 // -------------------------  routes ---------------------------------------------------------------------
