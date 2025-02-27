@@ -20,7 +20,9 @@ const { body, validationResult } = require('express-validator');
 const PORT = 8086;
 const mongo_uri = process.env.MONGO_URI || "mongodb+srv://teja:teja@cluster0.bgdbs80.mongodb.net/kissanfarm?retryWrites=true&w=majority&appName=Cluster0"
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://kisan-admin-auarh7fxb-saiteja1911s-projects.vercel.app'
+}));
 app.use(express.json());
 // // Middleware to parse JSON bodies
 // app.use(express.json({ limit: '50mb' }));
