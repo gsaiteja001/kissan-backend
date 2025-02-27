@@ -10,11 +10,11 @@ module.exports = function checkApiKey(req, res, next) {
     const serverApiKey = process.env.API_KEY;
   
     if (!clientApiKey) {
-      return res.status(401).json({ error: 'API Key missing' });
+      return res.status(401).json({ error: 'Key missing' });
     }
   
     if (clientApiKey !== serverApiKey) {
-      return res.status(403).json({ error: 'Invalid API Key' });
+      return res.status(403).json({ error: 'Inval Key' });
     }
   
     // If the key matches, proceed to the next middleware or route
