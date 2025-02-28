@@ -1538,6 +1538,29 @@ app.post('/api/farmers/update-profile-picture', async (req, res) => {
   }
 });
 
+app.get('/api/farmers/:farmerId/address', async (req, res) => {
+  const { farmerId } = req.params;
+
+  try {
+    // Find the farmer by farmerId
+    const farmer = await farmers.findOne({ farmerId });
+    
+    if (!farmer) {
+      return res.status(404).json({ message: 'Farmer not found.' });
+    }
+
+    // Send the address information (including the location) of the farmer
+    return res.status(200).json({
+      fullName: farmer.fullName,
+      phoneNumber: farmer.phoneNumber,
+      address: farmer.address,
+    });
+  } catch (error) {
+    console.error('Error fetching address:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
 
 
 // Update Address Endpoint
