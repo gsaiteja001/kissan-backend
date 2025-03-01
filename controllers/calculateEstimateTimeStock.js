@@ -5,7 +5,11 @@ const Product = require('../modal/product');
 
 exports.getDeliveryInfo = async (req, res) => {
 
-  let { userLocation, productId, variantId, warehouseIds } = req.query;
+ let { userLocation, productId, variantId, warehouseIds } = req.query;
+  
+  if (!userLocation) {
+    return res.status(400).json({ message: 'Missing userLocation parameter' });
+  }
 
   try {
     // Convert stringified userLocation to an object
