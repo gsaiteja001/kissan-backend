@@ -1596,23 +1596,39 @@ app.get('/api/farmers/:farmerId/address', async (req, res) => {
     // Find the farmer by farmerId
     const farmer = await farmers.findOne({ farmerId });
     
+
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
     }
 
     // Send the address information (including the location) of the farmer
+    // Fetch the address (point address) and farms (farm address) details
+    const address = farmer.address; // Fetch the address from the farmer's document
+
+    // Prepare farm address details, extracting necessary fields for each farm
+    const farmAddresses = farmer.farms.map(farm => ({
+      farmId: farm.farmId,
+      farmName: farm.farmName,
+      area: farm.area,
+      location: farm.location, // GeoJSON point location
+      boundary: farm.boundary, // Boundary with coordinates (polygon)
+      farmAddressType: 'farm address',
+    }));
+
+    // Send the response with both point and farm addresses
     return res.status(200).json({
-      fullName: farmer.fullName,
-      phoneNumber: farmer.phoneNumber,
-      address: farmer.address,
+      pointAddress: {
+        fullName: farmer.fullName,
+        phoneNumber: farmer.phoneNumber,
+        address: address, 
+        addressType: 'point address',
+      },
+      farmAddresses: farmAddresses, 
     });
   } catch (error) {
     console.error('Error fetching address:', error);
-    return res.status(500).json({ message: 'Internal server error.' });
   }
-});
-
-
+};
 
 
 // POST /api/farmers/:farmerId/farms
