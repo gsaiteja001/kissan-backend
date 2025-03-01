@@ -1,3 +1,8 @@
+const { haversineDistance } = require('../utils/distance');
+const InventoryItem = require('../modal/InventoryItem');
+const Warehouse = require('../modal/warehouse');
+const Product = require('../modal/product');
+
 exports.getDeliveryInfo = async (req, res) => {
 
   let { userLocation, productId, variantId, warehouseIds } = req.query;
