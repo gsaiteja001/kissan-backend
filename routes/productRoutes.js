@@ -14,11 +14,13 @@ const {
   getAllUniqueCategories,
 } = require('../controllers/productController');
 
+const { getDeliveryInfo } = require('../controllers/calculateEstimateTimeStock');
+
 
 const router = express.Router();
 
 
-
+router.get('/estimateDelivery', getDeliveryInfo);
 
 // List of users categorized by regions
 const users = {
@@ -176,6 +178,11 @@ router.put('/generate-reviews', async (req, res) => {
     console.error('Error generating reviews:', error);
   }
 });
+
+
+
+
+
 
 
 router.get('/categories', getAllUniqueCategories);

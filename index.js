@@ -20,9 +20,7 @@ const { body, validationResult } = require('express-validator');
 const PORT = 8086;
 const mongo_uri = process.env.MONGO_URI || "mongodb+srv://teja:teja@cluster0.bgdbs80.mongodb.net/kissanfarm?retryWrites=true&w=majority&appName=Cluster0"
 
-app.use(cors({
-  origin: 'https://kisan-admin-auarh7fxb-saiteja1911s-projects.vercel.app'
-}));
+app.use(cors());
 app.use(express.json());
 // // Middleware to parse JSON bodies
 // app.use(express.json({ limit: '50mb' }));
@@ -93,6 +91,11 @@ app.use('/api/migrateCoordinates', migrateCoordinatesRoutes);
 
 const ShowCaseRoute = require('./routes/ShowCaseRoute');
 app.use('/api/products/showcases', ShowCaseRoute);
+
+
+
+const plantDiseasesRoutes = require('./routes/plantDiseases');
+app.use('/plantDiseases', plantDiseasesRoutes);
 
 
 
@@ -310,6 +313,9 @@ app.get('/cropProtection/plant-diseases', async (req, res) => {
       res.status(500).json({ error: "Failed to fetch diseases." });
   }
 });
+
+
+
 
 
 
@@ -1540,49 +1546,6 @@ app.post('/api/farmers/update-profile-picture', async (req, res) => {
 
 
 
-app.get('/api/farmers/:farmerId/address', async (req, res) => {
-  const { farmerId } = req.params;
-
-  try {
-    // Find the farmer by farmerId
-    const farmer = await farmers.findOne({ farmerId });
-
-    if (!farmer) {
-      return res.status(404).json({ message: 'Farmer not found.' });
-    }
-
-    // Fetch the address (point address) and farms (farm address) details
-    const address = farmer.address; // Fetch the address from the farmer's document
-
-    // Prepare farm address details, extracting necessary fields for each farm
-    const farmAddresses = farmer.farms.map(farm => ({
-      farmId: farm.farmId,
-      farmName: farm.farmName,
-      area: farm.area,
-      location: farm.location, // GeoJSON point location
-      boundary: farm.boundary, // Boundary with coordinates (polygon)
-      farmAddressType: 'farm address',
-    }));
-
-    // Send the response with both point and farm addresses
-    return res.status(200).json({
-      pointAddress: {
-        fullName: farmer.fullName,
-        phoneNumber: farmer.phoneNumber,
-        address: address, // point address from the farmer's document
-        addressType: 'point address',
-      },
-      farmAddresses: farmAddresses, // List of farms with farm address details
-    });
-  } catch (error) {
-    console.error('Error fetching address:', error);
-    return res.status(500).json({ message: 'Internal server error.' });
-  }
-});
-
-
-
-
 // Update Address Endpoint
 app.post('/api/farmers/:farmerId/address', async (req, res) => {
   const { farmerId } = req.params;
@@ -1624,6 +1587,31 @@ app.post('/api/farmers/:farmerId/address', async (req, res) => {
     return res.status(500).json({ message: 'Internal server error.' });
   }
 });
+
+
+app.get('/api/farmers/:farmerId/address', async (req, res) => {
+  const { farmerId } = req.params;
+
+  try {
+    // Find the farmer by farmerId
+    const farmer = await farmers.findOne({ farmerId });
+    
+    if (!farmer) {
+      return res.status(404).json({ message: 'Farmer not found.' });
+    }
+
+    // Send the address information (including the location) of the farmer
+    return res.status(200).json({
+      fullName: farmer.fullName,
+      phoneNumber: farmer.phoneNumber,
+      address: farmer.address,
+    });
+  } catch (error) {
+    console.error('Error fetching address:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
 
 
 
