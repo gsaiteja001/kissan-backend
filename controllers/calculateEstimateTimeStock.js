@@ -6,16 +6,15 @@ const Product = require('../modal/product');
 exports.getDeliveryInfo = async (req, res) => {
 
  let { userLocation, productId, variantId, warehouseIds } = req.body;
-  
+
   if (!userLocation) {
     return res.status(400).json({ message: 'Missing userLocation parameter' });
   }
 
   try {
-    // Convert stringified userLocation to an object
-    userLocation = JSON.parse(userLocation);
-
-    warehouseIds = warehouseIds.split(',');
+    if (typeof warehouseIds === 'string') {
+      warehouseIds = warehouseIds.split(',');
+    }
 
     // Step 1: Check inventory availability
     const inventoryItems = await InventoryItem.find({
