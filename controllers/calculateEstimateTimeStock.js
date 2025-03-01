@@ -24,10 +24,6 @@ exports.getDeliveryInfo = async (req, res) => {
       stockQuantity: { $gt: 0 },
     });
 
-    // If no stock is available
-    if (inventoryItems.length === 0) {
-      return res.status(404).json({ message: 'No stock' });
-    }
 
     // Step 2: Calculate the distance between the user and the warehouses
     const warehouseDistances = [];
@@ -86,6 +82,7 @@ exports.getDeliveryInfo = async (req, res) => {
       warehouseId: selectedWarehouse.warehouseId,
       distance: selectedWarehouse.distance,
       deliveryDays: deliveryDays,
+      productAvailability: selectedWarehouse.productAvailability,
     });
   } catch (error) {
     console.error('Error estimating delivery info:', error);
