@@ -1617,18 +1617,21 @@ app.get('/api/farmers/:farmerId/address', async (req, res) => {
 
     // Send the response with both point and farm addresses
     return res.status(200).json({
+      fullName: farmer.fullName,
+      phoneNumber: farmer.phoneNumber,
+      address: farmer.address,
       pointAddress: {
         fullName: farmer.fullName,
         phoneNumber: farmer.phoneNumber,
-        address: address, 
+        address: address, // point address from the farmer's document
         addressType: 'point address',
       },
-      farmAddresses: farmAddresses, 
+      farmAddresses: farmAddresses, // List of farms with farm address details
     });
   } catch (error) {
     console.error('Error fetching address:', error);
   }
-};
+});
 
 
 // POST /api/farmers/:farmerId/farms
