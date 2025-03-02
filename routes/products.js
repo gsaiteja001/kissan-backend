@@ -18,6 +18,49 @@ const upload = multer({ dest: 'uploads/' });
 
 
 
+
+// PUT endpoint to update variantIds
+router.put('/update-variant-ids', async (req, res) => {
+  try {
+    const products = await Product.find({});
+    console.log(`Found ${products.length} products.`);
+    let updatedCount = 0;
+
+    for (let product of products) {
+      if (product.variants && product.variants.length > 0) {
+        // Get the first 4 letters of the product name (assuming product.name is a string)
+        const productNamePart = product.name.trim().slice(0, 4).toUpperCase();
+
+        // Update each variant with a new unique variantId
+        product.variants = product.variants.map((variant, index) => {
+          // Generate a random 8-digit number based on Date.now() plus the index
+          const randomPart = (Date.now() + index).toString().slice(-8);
+          variant.variantId = `VARID${productNamePart}${randomPart}`;
+          return variant;
+        });
+
+        await product.save();
+        updatedCount++;
+        console.log(`Updated variant ids for product ${product.productId}`);
+      }
+    }
+    console.log('Finished updating variant ids for all products.');
+    res.status(200).json({
+      message: 'Variant IDs updated successfully',
+      updatedCount,
+    });
+  } catch (error) {
+    console.error('Error updating variant ids:', error);
+    res.status(500).json({
+      error: 'Error updating variant ids',
+      details: error.message,
+    });
+  }
+});
+
+
+
+
 // Similar Products Route
 router.get('/similarProducts', async (req, res) => {
   console.log('Received request for /api/products/similar');
