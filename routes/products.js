@@ -28,14 +28,12 @@ router.put('/update-variant-ids', async (req, res) => {
 
     for (let product of products) {
       if (product.variants && product.variants.length > 0) {
-        // Get the first 4 letters of the product name (assuming product.name is a string)
-        const productNamePart = product.name.trim().slice(0, 4).toUpperCase();
-
+        
         // Update each variant with a new unique variantId
         product.variants = product.variants.map((variant, index) => {
           // Generate a random 8-digit number based on Date.now() plus the index
           const randomPart = (Date.now() + index).toString().slice(-8);
-          variant.variantId = `VARID${productNamePart}${randomPart}`;
+          variant.variantId = `VARID${randomPart}`;
           return variant;
         });
 
