@@ -4,28 +4,34 @@ const router = express.Router();
 const twilio = require('twilio');
 
 // Load environment variables (if not already loaded in your app)
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const verifyServiceSid = process.env.VERIFY_SERVICE_SID;
+// If you're using a .env file in development, ensure you have: require('dotenv').config();
 
-// Initialize the Twilio client
-const client = twilio(accountSid, authToken);
+const accountSid = process.env.TWILIO_ACCOUNT_SID;    // e.g., 'AC...'
+const apiKey = process.env.TWILIO_API_KEY;            // e.g., 'SK...'
+const apiSecret = process.env.TWILIO_API_SECRET;      // e.g., 'Ihp7X8wl...'
+const verifyServiceSid = process.env.VERIFY_SERVICE_SID; // e.g., 'VAe585f...'
+
+// Initialize Twilio client with API Key & Secret, specifying the Account SID
+const client = twilio(apiKey, apiSecret, { accountSid });
 
 /**
- *  POST /start-verify
+ *  POST /twilio/start-verify
  *
- *  Request Body JSON:
- *  {
- *    "to": "+91XXXXXXXXXX",  // phone number or email
- *    "channel": "sms",       // or "call", "whatsapp", "email"
- *    "locale": "en"          // optional - language code
- *  }
- *
- *  Response JSON:
- *  {
- *    "success": boolean,
- *    "error":   string  (present only if success = false)
- *  }
+ *  Example request body:
+ *    {
+ *      "to": "+91XXXXXXXXXX",    // phone number or email
+ *      "channel": "sms",         // or "call", "whatsapp", "email"
+ *      "locale": "en"            // optional - language code
+ *    }
+ *  Example response (JSON):
+ *    {
+ *      "success": true
+ *    }
+ *    or
+ *    {
+ *      "success": false,
+ *      "error": "some error message"
+ *    }
  */
 router.post('/start-verify', async (req, res) => {
   try {
@@ -38,20 +44,20 @@ router.post('/start-verify', async (req, res) => {
       });
     }
 
-    // Send a verification code
+    // Send a verification code via Twilio Verify
     const verification = await client.verify
       .services(verifyServiceSid)
       .verifications.create({
         to,
-        channel,  // "sms", "call", "whatsapp", or "email"
-        locale,   // e.g., "en", "hi", "zh", "ja", ...
+        channel,  // "sms", "call", "whatsapp", "email"
+        locale,   // e.g. "en", "hi", "zh", "ja", ...
       });
 
     console.log(`Sent verification: '${verification.sid}' to '${to}'`);
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error(error.message);
-    // If Twilio returns an error status, we can pass that along; otherwise default to 400
+    // If Twilio returns an error status, pass it along; otherwise default to 400
     return res.status(error.status || 400).json({
       success: false,
       error: error.message,
@@ -60,24 +66,27 @@ router.post('/start-verify', async (req, res) => {
 });
 
 /**
- *  POST /check-verify
+ *  POST /twilio/check-verify
  *
- *  Request Body JSON:
- *  {
- *    "to": "+91XXXXXXXXXX",  // phone number or email
- *    "code": "123456"        // the OTP code entered by user
- *  }
- *
- *  Response JSON:
- *  {
- *    "success": boolean,
- *    "message": string
- *  }
+ *  Example request body:
+ *    {
+ *      "to": "+91XXXXXXXXXX", // phone number or email
+ *      "code": "123456"       // the OTP code entered by user
+ *    }
+ *  Example response (JSON):
+ *    {
+ *      "success": true,
+ *      "message": "Verification success."
+ *    }
+ *    or
+ *    {
+ *      "success": false,
+ *      "message": "Incorrect token."
+ *    }
  */
 router.post('/check-verify', async (req, res) => {
   try {
     const { to, code } = req.body;
-
     if (!to || !code) {
       return res.status(400).json({
         success: false,
