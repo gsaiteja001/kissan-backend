@@ -105,6 +105,8 @@ const migrationRoutes = require('./routes/migrationRoutes');
 app.use('/migrate', migrationRoutes);
 
 
+const verifyRoutes = require('./verifyRoutes');
+app.use('/twilio', verifyRoutes);
 
 
 // Initialize Firebase Admin SDK
@@ -1589,6 +1591,8 @@ app.post('/api/farmers/:farmerId/address', async (req, res) => {
 });
 
 
+
+
 app.get('/api/farmers/:farmerId/address', async (req, res) => {
   const { farmerId } = req.params;
 
@@ -1632,6 +1636,8 @@ app.get('/api/farmers/:farmerId/address', async (req, res) => {
     console.error('Error fetching address:', error);
   }
 });
+
+
 
 
 // POST /api/farmers/:farmerId/farms
@@ -2352,6 +2358,274 @@ app.get('/agriLandRentalPost/:postedAdId', async (req, res) => {
   }
 });
   
+
+// api to send otp for adhar card verify.................
+
+app.post("/sendotpforadhar", async (req, res) => {
+  const adharcardnumber = req.body.adharcardnumber;
+
+  try {
+    const options = {
+      method: "POST",
+      url: "https://test.zoop.one/in/identity/okyc/otp/request",
+      headers: {
+        "api-key": "P3C6NEG-7RGMBVB-JDRKB6G-Q4MY1MH",
+        "app-id": "64f9b50cad1d000028fa7188",
+        "org-id": "60800ca35ed0c7001cad2605",
+        "Content-Type": "application/json",
+      },
+    };
+
+    const data = {
+      data: {
+        customer_aadhaar_number: adharcardnumber,
+        consent: "Y",
+        consent_text:
+          "I hereby declare my consent agreement for fetching my information via ZOOP API.",
+      },
+      task_id: "f26eb21e-4c35-4491-b2d5-41fa0e545a34",
+    };
+
+    const response = await axios.post(options.url, data, {
+      headers: options.headers,
+    });
+
+    res.send(response.data);
+  } catch (error) {
+    console.error(error);
+    res.send("Internal Server Error");
+  }
+});
+
+// api to verify adhar card details.....................
+
+app.post("/verifyadharcard", async (req, res) => {
+  const adharotp = req.body.adharotp;
+
+  const request_id = req.body.request_id;
+
+  const userid = req.body.userid;
+
+  try {
+    const options = {
+      method: "POST",
+      url: "https://test.zoop.one/in/identity/okyc/otp/verify",
+      headers: {
+        "api-key": "P3C6NEG-7RGMBVB-JDRKB6G-Q4MY1MH",
+        "app-id": "64f9b50cad1d000028fa7188",
+        "Content-Type": "application/json",
+      },
+    };
+
+    const data = {
+      data: {
+        request_id: request_id,
+        otp: adharotp,
+        consent: "Y",
+        consent_text:
+          "I hear by declare my consent agreement for fetching my information via ZOOP API",
+      },
+      task_id: "f26eb21e-4c35-4491-b2d5-41fa0e545a34",
+    };
+
+    const response = await axios.post(options.url, data, {
+      headers: options.headers,
+    });
+
+    console.log("response", response);
+
+    let userdetailsres;
+
+    if (response.data.result != null || response.data.result != undefined) {
+      const updateObj = {
+        $set: {
+          "aadharCardverified.status": true,
+          "aadharCardverified.data": response.data.result,
+          fullName: response.data.result.user_full_name,
+          DOB: response.data.result.user_dob,
+          gender: response.data.result.user_gender === "M" ? "Male" : "Female",
+          name: response.data.result.user_full_name,
+          city: response.data.result.user_address.loc || "",
+          State: response.data.result.user_address.state || "",
+          pincode: response.data.result.address_zip,
+          flatNum: [
+            response.data.result.user_address.house || "",
+            response.data.result.user_address.street || "",
+            response.data.result.user_address.loc || "",
+            response.data.result.user_address.dist || "",
+            response.data.result.user_address.state || "",
+            response.data.result.user_address.country || "",
+          ]
+            .filter((part) => !!part)
+            .join(", "),
+        },
+      };
+
+      // Check if panCardverified exists, create if not
+      const user = await Users.findByIdAndUpdate(userid, updateObj, {
+        new: true,
+      });
+
+      if (!user.panCardverified) {
+        user.panCardverified = {
+          status: "true",
+          data: response.data.result,
+        };
+        await user.save();
+      }
+
+      userdetailsres = user;
+    }
+
+    res.send(userdetailsres);
+
+    // res.send(response.data)
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+
+app.post("/verifypancard", async (req, res) => {
+  const { pancardnumber, userid } = req.body;
+
+  try {
+    const zoopOptions = {
+      method: "POST",
+      url: "https://test.zoop.one/api/v1/in/identity/pan/lite",
+      headers: {
+        "api-key": "P3C6NEG-7RGMBVB-JDRKB6G-Q4MY1MH",
+        "app-id": "64f9b50cad1d000028fa7188",
+        "Content-Type": "application/json",
+      },
+    };
+
+    const zoopData = {
+      data: {
+        customer_pan_number: pancardnumber,
+        consent: "Y",
+        consent_text:
+          "I hereby declare my consent agreement for fetching my information via ZOOP API.",
+      },
+      task_id: "f26eb21e-4c35-4491-b2d5-41fa0e545a34",
+    };
+
+    const zoopResponse = await axios.post(zoopOptions.url, zoopData, {
+      headers: zoopOptions.headers,
+    });
+
+    console.log("ZOOP API response", zoopResponse.data);
+
+    if (zoopResponse.data.result) {
+      const userdata = await Users.findById(userid);
+
+
+    // Create a regex for flexible matching of names
+    const nameParts = userdata.fullName.split(/\s+/).map(part => `(?=.*${part})`);
+    const regexFullName = new RegExp(`^${nameParts.join('')}`, 'i');
+
+    if (regexFullName.test(zoopResponse.data.result.user_full_name)) {
+
+        // Names match, proceed with verification
+        const updateObj = {
+          $set: {
+            "panCardverified.status": true,
+            "panCardverified.data": zoopResponse.data.result,
+          },
+        };
+
+        const user = await Users.findByIdAndUpdate(userid, updateObj, {
+          new: true,
+        });
+
+        if (!user.panCardverified) {
+          user.panCardverified = {
+            status: true,
+            data: zoopResponse.data.result,
+          };
+          await user.save();
+        }
+
+        return res.send(user);
+      } else {
+        return res.status(500).send("Name does not match with the PAN card.");
+      }
+    } else {
+      return res.status(500).send("Failed to verify PAN card.");
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+
+
+
+app.post("/phonepe", async (req, res) => {
+  try {
+    const data = {
+      merchantId: "",
+      merchantTransactionId: generateUniqueId("MT"),
+      merchantUserId: generateUniqueId("MTU"),
+      amount: 100,
+      redirectUrl: `http://localhost:8080/paymentstatus/${req.body.userId}`,
+      redirectMode: "POST",
+      callbackUrl: "http://localhost:3000/callbackPage",
+      mobileNumber: "9381264049",
+      paymentInstrument: {
+        type: "PAY_PAGE",
+      },
+    };
+
+    const encode = Buffer.from(JSON.stringify(data)).toString("base64");
+
+    const saltKey = "e9cad0d4-3f72-40dd-849d-2b4ee9d2a1e8";
+    const saltIndex = 1;
+
+    const string = `${encode}/pg/v1/pay${saltKey}`;
+    const sha256 = crypto.createHash("sha256").update(string).digest("hex");
+    const finalXHeader = `${sha256}###${saltIndex}`;
+
+    const response = await axios.post(
+      "https://api.phonepe.com/apis/hermes/pg/v1/pay",
+      {
+        request: encode,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": finalXHeader,
+          accept: "application/json",
+        },
+      }
+    );
+
+    const responseData = response.data;
+
+    // Redirect to the response URL
+    const redirectURL = responseData.data.instrumentResponse.redirectInfo.url;
+
+    // res.redirect(redirectURL); // Redirect the user to PhonePe's payment page
+
+    res.json(responseData.data.instrumentResponse.redirectInfo.url);
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
 
 
   app.listen(PORT, () => {
