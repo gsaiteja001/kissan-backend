@@ -20,7 +20,12 @@ const { getDeliveryInfo } = require('../controllers/calculateEstimateTimeStock')
 const router = express.Router();
 
 
-router.post('/estimateDelivery', getDeliveryInfo);
+
+
+
+
+
+router.get('/estimateDelivery', getDeliveryInfo);
 
 router.get('/categories', getAllUniqueCategories);
 

@@ -18,7 +18,6 @@ const upload = multer({ dest: 'uploads/' });
 
 
 
-
 // PUT endpoint to update variantIds
 router.put('/update-variant-ids', async (req, res) => {
   try {
@@ -28,12 +27,14 @@ router.put('/update-variant-ids', async (req, res) => {
 
     for (let product of products) {
       if (product.variants && product.variants.length > 0) {
-        
+        // Get the first 4 letters of the product name (assuming product.name is a string)
+        const productNamePart = product.name.trim().slice(0, 4).toUpperCase();
+
         // Update each variant with a new unique variantId
         product.variants = product.variants.map((variant, index) => {
           // Generate a random 8-digit number based on Date.now() plus the index
           const randomPart = (Date.now() + index).toString().slice(-8);
-          variant.variantId = `VARID${randomPart}`;
+          variant.variantId = `VARID${productNamePart}${randomPart}`;
           return variant;
         });
 
@@ -55,6 +56,58 @@ router.put('/update-variant-ids', async (req, res) => {
     });
   }
 });
+
+
+
+
+/**
+ * POST /randomize-prices
+ * Randomizes price, discount, and finalPrice for all products/variants.
+ */
+router.post('/randomize-prices', async (req, res) => {
+  try {
+    // Fetch all products (including archived or non-archived, adjust as needed)
+    const products = await Product.find({});
+
+    for (const product of products) {
+      if (product.variants && product.variants.length > 0) {
+        // Randomize each variant
+        product.variants.forEach((variant) => {
+          // Random price between 559 and 1199 (inclusive)
+          const randomPrice = Math.floor(Math.random() * (1199 - 559 + 1)) + 559;
+          // Random discount between 10 and 20 (inclusive)
+          const randomDiscount = Math.floor(Math.random() * (40 - 10 + 1)) + 10;
+
+          variant.price = randomPrice;
+          variant.discount.amount = randomDiscount;
+          variant.discount.discountType = 'Percentage'; // force discount type to "Percentage"
+          // finalPrice will be auto-calculated in VariantSchema.pre('save') hook
+        });
+      } else {
+        // Product has no variants, so randomize the product-level price/discount/finalPrice
+        const randomPrice = Math.floor(Math.random() * (1199 - 559 + 1)) + 559;
+        const randomDiscount = Math.floor(Math.random() * (40 - 10 + 1)) + 10;
+
+        product.price = randomPrice;
+        product.discount.amount = randomDiscount;
+        product.discount.discountType = 'Percentage';
+        // finalPrice will be calculated in the ProductSchema.pre('save') hook
+      }
+
+      // Save each product to trigger mongoose pre-save hooks
+      await product.save();
+    }
+
+    res.status(200).json({
+      message: 'Prices, discounts, and finalPrices were successfully randomized for all products!',
+    });
+  } catch (error) {
+    console.error('Error randomizing product prices:', error);
+    res.status(500).json({ error: 'An error occurred while randomizing prices.' });
+  }
+});
+
+
 
 
 

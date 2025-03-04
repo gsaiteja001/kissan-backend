@@ -98,6 +98,10 @@ const plantDiseasesRoutes = require('./routes/plantDiseases');
 app.use('/plantDiseases', plantDiseasesRoutes);
 
 
+const MarketsRoutes = require('./routes/marketPriceRoutes');
+app.use('/api/Markets', MarketsRoutes);
+
+
 
 
 // Import the migration routes and mount them
@@ -1446,18 +1450,19 @@ app.put('/farmers/:farmerId/cart', async (req, res) => {
       return res.status(400).json({ message: 'cartItems must be an array.' });
     }
 
-    // Validate each cartItem
+    // Validate each cart item against the updated frontend schema
     const isValid = cartItems.every(item => {
       return item &&
         typeof item.productId === 'string' && item.productId.trim() !== '' &&
-        item.sizeOption &&
-        typeof item.sizeOption.size === 'string' && item.sizeOption.size.trim() !== '' &&
-        typeof item.sizeOption.price === 'number' &&
-        typeof item.quantity === 'number' && item.quantity > 0;
+        typeof item.basePrice === 'number' &&
+        typeof item.quantity === 'number' && item.quantity > 0 &&
+        (item.variant === null || (typeof item.variant === 'object' && Object.keys(item.variant).length > 0));
     });
 
     if (!isValid) {
-      return res.status(400).json({ message: 'Each cartItem must have productId, sizeOption (size and price), and quantity.' });
+      return res.status(400).json({ 
+        message: 'Each cartItem must have productId, basePrice, finalPrice, quantity and optionally a valid variant, discount, and deliveryInfo.' 
+      });
     }
 
     // Update cartItems for the specified farmer
@@ -1477,6 +1482,7 @@ app.put('/farmers/:farmerId/cart', async (req, res) => {
     res.status(500).json({ message: 'Internal server error.' });
   }
 });
+
 
 
 
@@ -2566,9 +2572,9 @@ app.post("/verifypancard", async (req, res) => {
 app.post("/phonepe", async (req, res) => {
   try {
     const data = {
-      merchantId: "",
-      merchantTransactionId: generateUniqueId("MT"),
-      merchantUserId: generateUniqueId("MTU"),
+      merchantId: "M18MKETAFZWW",
+      merchantTransactionId: 3463645747,
+      merchantUserId: 124324234,
       amount: 100,
       redirectUrl: `http://localhost:8080/paymentstatus/${req.body.userId}`,
       redirectMode: "POST",

@@ -3,35 +3,40 @@ const InventoryItem = require('../modal/InventoryItem');
 const Warehouse = require('../modal/warehouse');
 const Product = require('../modal/product');
 
-
 exports.getDeliveryInfo = async (req, res) => {
-  const { userLocation, productId, variantId, warehouseIds } = req.body;
+  const { userLocation, productId, variantId, warehouseIds } = req.body;  
 
   try {
-    // Step 1: Check inventory availability (including warehouses with stock quantity zero)
+    // Step 1: Check inventory availability
     const inventoryItems = await InventoryItem.find({
       productId,
       variantId,
       warehouseId: { $in: warehouseIds },
+      stockQuantity: { $gt: 0 },
     });
+
+    // If no stock is available
+    if (inventoryItems.length === 0) {
+      return res.status(404).json({ message: 'No stock' });
+    }
 
     // Step 2: Calculate the distance between the user and the warehouses
     const warehouseDistances = [];
 
     for (let inventoryItem of inventoryItems) {
-      const warehouse = await Warehouse.findOne({ warehouseId: inventoryItem.warehouseId });
+      const warehouse = await Warehouse.findOne({ warehouseId: inventoryItem.warehouseId });  
       if (warehouse && warehouse.location && warehouse.location.coordinates) {
-        const warehouseLocation = warehouse.location.coordinates;
+        const warehouseLocation = warehouse.location.coordinates; 
         const distance = haversineDistance(
           userLocation.latitude,
           userLocation.longitude,
-          warehouseLocation[1], // Longitude
-          warehouseLocation[0]  // Latitude
+          warehouseLocation[1],  
+          warehouseLocation[0]  
         );
-
+        
         const distanceInKm = distance / 1000;
 
-        // Step 3: Store warehouse info along with distance and stock availability
+        // Step 3: Store warehouse info along with distance
         warehouseDistances.push({
           warehouseId: inventoryItem.warehouseId,
           distance: distanceInKm,
@@ -40,9 +45,9 @@ exports.getDeliveryInfo = async (req, res) => {
       }
     }
 
-    // If no warehouse found with valid distance
+    // If no warehouse found with valid distance, return "No stock"
     if (warehouseDistances.length === 0) {
-      return res.status(404).json({ message: 'No warehouses available' });
+      return res.status(404).json({ message: 'No stock' });
     }
 
     // Step 4: Select the warehouse with the shortest distance
@@ -54,18 +59,18 @@ exports.getDeliveryInfo = async (req, res) => {
     let deliveryDays = 0;
 
     if (selectedWarehouse) {
-      const { distance } = selectedWarehouse;
+      const { distance, weight } = selectedWarehouse;
 
       if (distance <= 50) {
-        deliveryDays = 2;
+        deliveryDays = weight <= 2 ? 2 : 3;
       } else if (distance <= 100) {
-        deliveryDays = 3;
+        deliveryDays = weight <= 2 ? 3 : 4;
       } else if (distance <= 200) {
-        deliveryDays = 4;
+        deliveryDays = weight <= 2 ? 4 : 5;
       } else if (distance <= 500) {
-        deliveryDays = 5;
+        deliveryDays = weight <= 2 ? 5 : 7;
       } else {
-        deliveryDays = 7;
+        deliveryDays = weight <= 2 ? 7 : 10;
       }
     }
 
@@ -74,7 +79,6 @@ exports.getDeliveryInfo = async (req, res) => {
       warehouseId: selectedWarehouse.warehouseId,
       distance: selectedWarehouse.distance,
       deliveryDays: deliveryDays,
-      productAvailability: selectedWarehouse.productAvailability,
     });
   } catch (error) {
     console.error('Error estimating delivery info:', error);

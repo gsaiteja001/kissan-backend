@@ -1,5 +1,3 @@
-// modal/LocalizedString.js
-
 const mongoose = require('mongoose');
 
 const LocalizedStringSchema = new mongoose.Schema(
@@ -11,8 +9,13 @@ const LocalizedStringSchema = new mongoose.Schema(
     ml: { type: String, trim: true },
     bn: { type: String, trim: true },
     hi: { type: String, trim: true },
+    ma: { type: String, trim: true },
+    gu: { type: String, trim: true },
+    od: { type: String, trim: true },
+    pj: { type: String, trim: true },
+    as: { type: String, trim: true },
   },
-  { _id: false } // Prevents Mongoose from adding an _id field
+  { _id: false } 
 );
 
 module.exports = LocalizedStringSchema;

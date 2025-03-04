@@ -215,10 +215,8 @@ const CropDetailsSchema = new Schema({
 
 const CartItemSchema = new Schema({
   productId: { type: String, required: true },
-  sizeOption: {
-    size: { type: String, required: true },
-    price: { type: Number, required: true },
-  },
+  variant: { type: Object, required: false, default: null },
+  basePrice: { type: Number, required: true },
   quantity: { type: Number, required: true, default: 1 },
 });
 
