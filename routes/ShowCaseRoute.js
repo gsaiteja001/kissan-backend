@@ -41,52 +41,62 @@ router.post('/get-showcase-ids', async (req, res) => {
   }
 });
 
-
 router.post('/:showcaseId/products/:warehouseId', async (req, res) => {
   const { showcaseId, warehouseId } = req.params;
-  const { products } = req.body;  // Get array of products
+  const { products } = req.body; // Expect an array of products
 
   try {
-    // Validate if the showcaseId exists in the ShowCase collection
+    // Validate if the showcase exists
     const showcase = await ShowCase.findOne({ showcaseId });
-
     if (!showcase) {
       return res.status(404).json({ message: 'Showcase not found' });
     }
 
-    // Check if any of the products are already in the showcase
-    for (let product of products) {
-      if (showcase.productIds.includes(product.productId)) {
-        return res.status(400).json({ message: `Product ${product.productId} already added to showcase` });
-      }
-    }
+    // Process products: add new ones and collect duplicates
+    const duplicates = [];
+    const newProducts = [];
 
-    // Add products to the showcase
-    products.forEach(product => showcase.productIds.push(product.productId));
+    products.forEach(product => {
+      if (!showcase.productIds.includes(product.productId)) {
+        showcase.productIds.push(product.productId);
+        newProducts.push(product.productId);
+      } else {
+        duplicates.push(product.productId);
+      }
+    });
 
     // Save the updated showcase
     await showcase.save();
 
-    // Now, update the warehouse document by pushing the showcaseId into the warehouse's showcaseId field
+    // Find the warehouse by warehouseId
     const warehouse = await Warehouse.findOne({ warehouseId });
-
     if (!warehouse) {
       return res.status(404).json({ message: 'Warehouse not found' });
     }
 
-    // Check if the showcaseId is already linked to the warehouse
-    if (warehouse.showcaseId.includes(showcaseId)) {
-      return res.status(400).json({ message: 'Showcase already linked to warehouse' });
+    // Check if the showcase is already linked to the warehouse; if not, add it.
+    let warehouseLinked = false;
+    if (!warehouse.showcaseId.includes(showcaseId)) {
+      warehouse.showcaseId.push(showcaseId);
+      await warehouse.save();
+      warehouseLinked = true;
     }
 
-    // Push the showcaseId to the warehouse document
-    warehouse.showcaseId.push(showcaseId);
+    // Build a response message including duplicate info and warehouse linking status.
+    let responseMessage = '';
+    if (newProducts.length > 0 && duplicates.length > 0) {
+      responseMessage = `New products added: ${newProducts.join(', ')}. Duplicate products skipped: ${duplicates.join(', ')}.`;
+    } else if (newProducts.length > 0) {
+      responseMessage = `Products added: ${newProducts.join(', ')}.`;
+    } else if (duplicates.length > 0) {
+      responseMessage = `All provided products were already added.`;
+    }
 
-    // Save the updated warehouse
-    await warehouse.save();
+    responseMessage += warehouseLinked
+      ? ' Showcase linked to warehouse successfully.'
+      : ' Showcase was already linked to warehouse.';
 
-    // Respond with success message
-    res.status(200).json({ message: 'Products added to showcase and showcase linked to warehouse successfully' });
+    res.status(200).json({ message: responseMessage });
   } catch (error) {
     console.error('Error in adding products to showcase and updating warehouse:', error);
     res.status(500).json({ message: 'Server error' });
