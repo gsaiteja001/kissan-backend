@@ -1342,6 +1342,38 @@ app.put('/userType/farmers/:id', async (req, res) => {
 
 
 
+app.post('/api/check-phone', async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) {
+      return res.status(400).json({ error: 'phoneNumber is required in the request body.' });
+    }
+
+    // Use a lean query for efficiency (returns plain JavaScript object)
+    const existingUser = await farmers.findOne({ phoneNumber }).lean();
+
+    if (existingUser) {
+      // The phone number exists and is linked to a valid user.
+      return res.json({
+        exists: true,
+        message: 'Phone number is already linked to an existing user.',
+        user: existingUser, // Optionally send back user details (omit if sensitive)
+      });
+    } else {
+      // The phone number does not exist; treat it as a new customer/user.
+      return res.json({
+        exists: false,
+        message: 'Phone number not found. This belongs to a new customer/user.',
+      });
+    }
+  } catch (error) {
+    console.error('Error checking phone number:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+
+
 app.get('/farmers/:id', async (req, res) => {
   try {
     const farmerId = req.params.id;
