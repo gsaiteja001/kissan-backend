@@ -1308,7 +1308,6 @@ app.post('/subscribe-free-trial', async (req, res) => {
   }
 });
 
-
 app.put('/userType/farmers/:id', async (req, res) => {
   const farmerId = req.params.id;
   const updateData = req.body;
@@ -1328,15 +1327,17 @@ app.put('/userType/farmers/:id', async (req, res) => {
     const updatedFarmer = await farmer.save();
 
     // Respond with the updated farmer data
-    res.status(200).json(updatedFarmer);
+    res.status(200).json(updatedFarmer); // Ensure this response is sent back
   } catch (error) {
     console.error('Error updating farmer:', error);
+    
+    // Improved error handling: send more detailed error message
     if (error.name === 'ValidationError') {
-      // Extract validation error messages
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ message: 'Validation Error', errors });
     }
-    res.status(500).json({ message: 'Server Error' });
+
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
 
