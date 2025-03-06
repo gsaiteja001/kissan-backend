@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require('body-parser');
 
-const axios = require('axios'); // Make sure axios is imported here
+const axios = require('axios'); 
 
 const jwt = require('jsonwebtoken');
 const app = express();
@@ -1740,37 +1740,50 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
 
 
 
-  app.post('/farmers/signup', async (req, res) => {
-    try {
-      const { fullName, phoneNumber, location } = req.body;
-
-      const existingFarmer = await farmers.findOne({ phoneNumber });
-      if (existingFarmer) {
-        return res.status(400).json({ message: 'Farmer already exists with this phone number.' });
-      }
-
-      const farmerId = `FARMERID${Date.now()}${Math.floor(Math.random() * 1000)}`;
-
-      const newFarmer = new farmers({
-        farmerId,
-        fullName,
-        phoneNumber,
-        location: {
-          lat: location.lat,
-          long: location.long,
-        },
-        createdAt: new Date(),
-      });
-
-      await newFarmer.save();
-
-      res.status(200).json({ message: 'Farmer created successfully.', farmerId });
-    } catch (error) {
-
-      console.error('Signup Error:', error);
-      res.status(500).json({ error: error.message });
+ app.post('/farmers/signup', async (req, res) => {
+  try {
+    const { fullName, phoneNumber, location, postalCode, city, age } = req.body;
+    
+    // Validate age
+    if (age < 10) {
+      return res.status(400).json({ message: 'Age must be at least 10.' });
     }
-  });
+    
+    const existingFarmer = await farmers.findOne({ phoneNumber });
+    if (existingFarmer) {
+      return res.status(400).json({ message: 'Farmer already exists with this phone number.' });
+    }
+
+    const farmerId = `FARMERID${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+    const newFarmer = new farmers({
+      farmerId,
+      fullName,
+      phoneNumber,
+      location: {
+        type: 'Point',
+        coordinates: [location.long, location.lat],
+      },
+      address: {
+        city,
+        postalCode,
+        location: {
+          type: 'Point',
+          coordinates: [location.long, location.lat],
+        },
+      },
+      age, // Assumes your Farmer schema has been updated to include the "age" field
+      createdAt: new Date(),
+    });
+
+    await newFarmer.save();
+
+    res.status(200).json({ message: 'Farmer created successfully.', farmerId });
+  } catch (error) {
+    console.error('Signup Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 
 
