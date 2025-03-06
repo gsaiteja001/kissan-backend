@@ -1739,10 +1739,9 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   
 
 
-
- app.post('/farmers/signup', async (req, res) => {
+app.post('/farmers/signup', async (req, res) => {
   try {
-    const { fullName, phoneNumber, location, postalCode, city, age } = req.body;
+    const { fullName, phoneNumber, location, postalCode, city, age, farmerDetails, gardenerDetails } = req.body;
     
     // Validate age
     if (age < 10) {
@@ -1772,8 +1771,11 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
           coordinates: [location.long, location.lat],
         },
       },
-      age, // Assumes your Farmer schema has been updated to include the "age" field
+      age,
       createdAt: new Date(),
+      
+      farmerDetails,   
+      gardenerDetails, 
     });
 
     await newFarmer.save();
