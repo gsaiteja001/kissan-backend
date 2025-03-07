@@ -266,7 +266,6 @@ router.get('/productsByIds', async (req, res) => {
 
 
 // GET /api/products/byCategory
-// Example request: GET /api/products/byCategory?category=Fertilizers
 router.get('/byCategory', async (req, res) => {
   try {
     const { category } = req.query;
@@ -276,7 +275,6 @@ router.get('/byCategory', async (req, res) => {
     }
 
     // If you want 'all' to return all products without filtering,
-    // you can handle that case here:
     if (category.toLowerCase() === 'all') {
       const allProducts = await Product.find({ archived: { $ne: true } }).lean();
       return res.json({ products: allProducts });
