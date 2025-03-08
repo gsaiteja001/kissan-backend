@@ -6,7 +6,7 @@ const Farmer = require('../modal/farmers');
 
 
 // Get Search History by farmerId
-router.get('/save/:farmerId', async (req, res) => {
+router.get('/getSearchHistory/:farmerId', async (req, res) => {
   const { farmerId } = req.params;
   
   try {
@@ -100,7 +100,7 @@ router.delete('/api/searchHistory/:farmerId/:queryId', async (req, res) => {
   
 
 // Post a New Search Query
-router.post('/api/searchHistory/:farmerId', async (req, res) => {
+router.post('/save/:farmerId', async (req, res) => {
     const { farmerId } = req.params;
     const { query, category, location, resultsCount, additionalInfo } = req.body;
   
