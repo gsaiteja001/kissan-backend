@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require('body-parser');
 
-const axios = require('axios'); 
+const axios = require('axios'); // Make sure axios is imported here
 
 const jwt = require('jsonwebtoken');
 const app = express();
@@ -81,7 +81,8 @@ app.use('/api/warehouses', warehouseRoutes);
 const supplierRoutes = require('./routes/suppliers');
 app.use('/suppliers', supplierRoutes);
 
-
+const searchHistoryRoutes = require('./routes/searchhistoryRoute');
+app.use('/api/searchHistory', searchHistoryRoutes);
 
 const saleRoutes = require('./routes/saleRoutes');
 app.use('/api/sale', saleRoutes);
@@ -1308,6 +1309,7 @@ app.post('/subscribe-free-trial', async (req, res) => {
   }
 });
 
+
 app.put('/userType/farmers/:id', async (req, res) => {
   const farmerId = req.params.id;
   const updateData = req.body;
@@ -1327,17 +1329,15 @@ app.put('/userType/farmers/:id', async (req, res) => {
     const updatedFarmer = await farmer.save();
 
     // Respond with the updated farmer data
-    res.status(200).json(updatedFarmer); // Ensure this response is sent back
+    res.status(200).json(updatedFarmer);
   } catch (error) {
     console.error('Error updating farmer:', error);
-    
-    // Improved error handling: send more detailed error message
     if (error.name === 'ValidationError') {
+      // Extract validation error messages
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ message: 'Validation Error', errors });
     }
-
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 
@@ -1740,53 +1740,38 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   
 
 
-app.post('/farmers/signup', async (req, res) => {
-  try {
-    const { fullName, phoneNumber, location, postalCode, city, age, farmerDetails, gardenerDetails } = req.body;
-    
-    // Validate age
-    if (age < 10) {
-      return res.status(400).json({ message: 'Age must be at least 10.' });
-    }
-    
-    const existingFarmer = await farmers.findOne({ phoneNumber });
-    if (existingFarmer) {
-      return res.status(400).json({ message: 'Farmer already exists with this phone number.' });
-    }
 
-    const farmerId = `FARMERID${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  app.post('/farmers/signup', async (req, res) => {
+    try {
+      const { fullName, phoneNumber, location } = req.body;
 
-    const newFarmer = new farmers({
-      farmerId,
-      fullName,
-      phoneNumber,
-      location: {
-        type: 'Point',
-        coordinates: [location.long, location.lat],
-      },
-      address: {
-        city,
-        postalCode,
+      const existingFarmer = await farmers.findOne({ phoneNumber });
+      if (existingFarmer) {
+        return res.status(400).json({ message: 'Farmer already exists with this phone number.' });
+      }
+
+      const farmerId = `FARMERID${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+      const newFarmer = new farmers({
+        farmerId,
+        fullName,
+        phoneNumber,
         location: {
-          type: 'Point',
-          coordinates: [location.long, location.lat],
+          lat: location.lat,
+          long: location.long,
         },
-      },
-      age,
-      createdAt: new Date(),
-      
-      farmerDetails,   
-      gardenerDetails, 
-    });
+        createdAt: new Date(),
+      });
 
-    await newFarmer.save();
+      await newFarmer.save();
 
-    res.status(200).json({ message: 'Farmer created successfully.', farmerId });
-  } catch (error) {
-    console.error('Signup Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+      res.status(200).json({ message: 'Farmer created successfully.', farmerId });
+    } catch (error) {
+
+      console.error('Signup Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 
 
