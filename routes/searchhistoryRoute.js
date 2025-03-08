@@ -6,7 +6,7 @@ const Farmer = require('../modal/farmers');
 
 
 // Get Search History by farmerId
-router.get('/api/searchHistory/:farmerId', async (req, res) => {
+router.get('/save/:farmerId', async (req, res) => {
   const { farmerId } = req.params;
   
   try {
