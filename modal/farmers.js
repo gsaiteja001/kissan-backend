@@ -436,7 +436,8 @@ const SearchHistorySchema = new Schema({
       'Growbags', 
       'Herbs', 
       'Houseplants', 
-      'Tools'
+      'Tools',
+      'Products',
     ],
     required: false, 
   }, 
