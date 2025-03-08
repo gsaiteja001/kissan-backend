@@ -105,29 +105,23 @@ router.post('/api/searchHistory/:farmerId', async (req, res) => {
     const { query, category, location, resultsCount, additionalInfo } = req.body;
   
     try {
-      const farmer = await Farmer.findOne({ farmerId });
-      if (!farmer) {
-        return res.status(404).json({ message: 'Farmer not found' });
+        const farmer = await Farmer.findOne({ farmerId });
+        if (!farmer) {
+          console.log('Farmer not found:', farmerId);
+          return res.status(404).json({ message: 'Farmer not found' });
+        }
+      
+        // Log the incoming search history
+        console.log('New search history:', newSearchHistory);
+      
+        farmer.searchHistory.push(newSearchHistory);
+        await farmer.save();
+      
+        res.status(201).json(newSearchHistory);
+      } catch (err) {
+        console.error('Error saving search history:', err);
+        res.status(500).json({ message: 'Server error', error: err.message });
       }
-  
-      // Create a new search history entry
-      const newSearchHistory = {
-        query,
-        category,
-        location,
-        resultsCount,
-        additionalInfo,
-        searchDate: new Date()
-      };
-  
-      farmer.searchHistory.push(newSearchHistory);
-      await farmer.save();
-  
-      res.status(201).json(newSearchHistory);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Server error' });
-    }
   });
   
   module.exports = router;
