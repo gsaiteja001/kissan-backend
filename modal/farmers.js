@@ -10,7 +10,7 @@ const LocationSchema = new Schema({
     required: true,
   },
   coordinates: {
-    type: [Number], // [longitude, latitude, elevation (optional)]
+    type: [Number], 
     required: true,
   },
 });
@@ -247,7 +247,9 @@ const FarmerTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: FARMER_CATEGORIES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('farmer');
+    }
   },
   fertilizerChoice: {
     type: String,
@@ -261,17 +263,23 @@ const GardenerTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: GARDENER_CATEGORIES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
+    }
   },
   userExperience: {
     type: String,
     enum: GARDENER_EXPERIENCES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
+    }
   },
   userChoice: {
     type: String,
     enum: GARDENER_CHOICES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
+    }
   }
 }, { _id: false });
 
@@ -280,7 +288,9 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: ANIMAL_HUSBANDRY_CATEGORIES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('animalHusbandry');
+    }
   },
   breedName: {
     type: String,
@@ -397,6 +407,57 @@ const CompletedServiceRequestSchema = new Schema({
   scheduledDate: { type: Date, required: true },
 }, { _id: false });
 
+
+// Subschema for Search History
+const SearchHistorySchema = new Schema({
+  query: { type: String, required: true }, 
+  category: { 
+    type: String,
+    enum: [
+      'Crops', 
+      'Farming Tools', 
+      'Services', 
+      'Suppliers', 
+      'Market', 
+      'Other',
+      'Pesticides', 
+      'Insecticides', 
+      'Fungicides', 
+      'Farm Machinery', 
+      'Bio-Pesticides', 
+      'Seeds', 
+      'Brands', 
+      'Soil', 
+      'Garden Tools', 
+      'Growth Promoters', 
+      'Herbicides', 
+      'Nutrients', 
+      'Pots', 
+      'Growbags', 
+      'Herbs', 
+      'Houseplants', 
+      'Tools'
+    ],
+    required: false, 
+  }, 
+  searchDate: { type: Date, default: Date.now, required: true }, 
+  location: { 
+    type: LocationSchema, 
+    required: false,
+  },
+  resultsCount: { 
+    type: Number, 
+    required: false, 
+    default: 0, 
+  },
+  additionalInfo: { 
+    type: String, 
+    required: false, 
+  }, 
+});
+
+
+
 // Main Farmer Schema with Upgraded Features
 const FarmerSchema = new Schema({
   farmerId: { type: String, required: true, unique: true, trim: true },
@@ -415,6 +476,11 @@ const FarmerSchema = new Schema({
   wallet: {
     balance: { type: Number, default: 0, required: false },
     currency: { type: String, default: 'RUPEE', required: false },
+  },
+  searchHistory: { 
+    type: [SearchHistorySchema], 
+    required: false, 
+    default: [] 
   },
   financialStatus: { type: FinancialStatusSchema, required: false },
   ProviderID: { type: String, required: false, unique: true, trim: true },
@@ -478,6 +544,12 @@ const FarmerSchema = new Schema({
     type: [String],
     enum: USER_TYPES,
     required: false,
+    validate: {
+      validator: function(value) {
+        return value.length > 0;
+      },
+      message: 'At least one user type must be specified.'
+    }
   },
   aadharNumber: { type: String, required: false },
   aadharVerificationStatus: {
