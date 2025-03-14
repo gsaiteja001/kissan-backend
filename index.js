@@ -93,7 +93,8 @@ app.use('/api/migrateCoordinates', migrateCoordinatesRoutes);
 const ShowCaseRoute = require('./routes/ShowCaseRoute');
 app.use('/api/products/showcases', ShowCaseRoute);
 
-
+const GardeningplantRoutes = require('./routes/uploadgardening');
+app.use('/Gardeningplant', GardeningplantRoutes);
 
 const plantDiseasesRoutes = require('./routes/plantDiseases');
 app.use('/plantDiseases', plantDiseasesRoutes);
