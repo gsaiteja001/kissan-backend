@@ -474,7 +474,7 @@ const FarmerSchema = new Schema({
     default: [] 
   },
   financialStatus: { type: FinancialStatusSchema, required: false },
-  ProviderID: { type: String, required: false, unique: true, trim: true },
+  ProviderID: { type: String, required: false, trim: true },
   availableLandForRent: { type: Boolean, default: false, required: false },
   rentedLandDetails: [
     {
