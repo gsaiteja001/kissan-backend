@@ -8,25 +8,28 @@ const { Schema } = mongoose;
  * (regarding orders, products, or service requests).
  */
 
+// Subschema for Notes on tickets
 const NoteSchema = new Schema({
   noteText: { type: String, trim: true },
   createdBy: { type: String, ref: 'User', required: false }, // or 'Admin' if you have a separate admin model
   createdAt: { type: Date, default: Date.now },
 }, { _id: false });
 
+// Subschema for file attachments related to tickets
 const AttachmentSchema = new Schema({
   fileName: { type: String, required: false },
   fileUrl: { type: String, required: false },
   uploadedAt: { type: Date, default: Date.now },
 }, { _id: false });
 
+// FarmersTicket Schema
 const FarmersTicketSchema = new Schema({
   // Unique Ticket ID
   ticketId: {
     type: String,
     required: true,
     unique: true,
-    default: uuidv4,  // or () => uuidv4()
+    default: uuidv4,
     trim: true,
   },
 
@@ -36,12 +39,67 @@ const FarmersTicketSchema = new Schema({
   },
 
   // Category of the issue:
-  //   - "Order" if related to an order
-  //   - "ServiceRequest" if related to a service request
-  //   - "Other" if it doesn't fall under the above categories
   category: {
     type: String,
-    enum: ['Order', 'ServiceRequest', 'Other'],
+    enum: [
+      'Order-Related', 
+      'Profile-Related', 
+      'Product-Related', 
+      'Disease-Related', 
+      'Service-Related', 
+      'Shipping-Related', 
+      'Payment-Related', 
+      'Promotion-Related', 
+      'Technical-Issues', 
+      'Feedback', 
+      'Legal-Compliance', 
+      'Out-of-Stock-Pre-order'
+    ],
+    required: true,
+  },
+
+  // Subcategory for each category (to track more specific types of issues)
+  subcategory: {
+    type: String,
+    enum: [
+      // Order-Related Subcategories
+      'Refund Request', 'Return Request', 'Order Cancellation', 
+      'Order Status Inquiry', 'Order Modification',
+
+      // Profile-Related Subcategories
+      'Profile Information Update', 'Password Reset', 
+      'Account Deactivation/Deletion', 'Account Verification', 'Loyalty/Reward Program Inquiry',
+
+      // Product-Related Subcategories
+      'Product Availability Inquiry', 'Product Information Request', 'Product Recommendations',
+
+      // Disease-Related Subcategories
+      'Pest/Disease Identification', 'Disease/Plant Care Advice', 'Soil/Plant Condition',
+
+      // Service-Related Subcategories
+      'Export/Import Services', 'Bulk Orders', 'Agricultural Services', 'Consultation or Expert Advice',
+
+      // Shipping-Related Subcategories
+      'Delayed Delivery', 'Damaged Goods During Shipping', 'Wrong Shipping Information', 'Shipping Cost Inquiry',
+
+      // Payment-Related Subcategories
+      'Payment Failure/Issues', 'Billing Address Issues', 'Invoice Request', 'Refund Issues',
+
+      // Promotion-Related Subcategories
+      'Coupon Code Issues', 'Promotions and Offers Inquiry',
+
+      // Technical Issues Subcategories
+      'Website Navigation Issues', 'Payment Gateway Issues', 'Mobile App Issues', 'Feature Requests',
+
+      // Feedback Subcategories
+      'General Feedback', 'Feature Requests',
+
+      // Legal/Compliance Subcategories
+      'Privacy and Data Protection', 'Product Safety Compliance', 'Warranty Claims',
+
+      // Out-of-Stock and Pre-order Subcategories
+      'Out of Stock Product Inquiry', 'Pre-order Request'
+    ],
     required: true,
   },
 
@@ -118,4 +176,5 @@ const FarmersTicketSchema = new Schema({
   timestamps: true // Automatically handles createdAt, updatedAt
 });
 
+// Export the model
 module.exports = mongoose.model('FarmersTicket', FarmersTicketSchema);

@@ -247,7 +247,9 @@ const FarmerTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: FARMER_CATEGORIES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('farmer');
+    }
   },
   fertilizerChoice: {
     type: String,
@@ -261,17 +263,23 @@ const GardenerTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: GARDENER_CATEGORIES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
+    }
   },
   userExperience: {
     type: String,
     enum: GARDENER_EXPERIENCES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
+    }
   },
   userChoice: {
     type: String,
     enum: GARDENER_CHOICES,
-    required: false
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
+    }
   }
 }, { _id: false });
 
@@ -280,7 +288,9 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: ANIMAL_HUSBANDRY_CATEGORIES,
-    required: false,
+    required: function() {
+      return this.parent().userTypes && this.parent().userTypes.includes('animalHusbandry');
+    }
   },
   breedName: {
     type: String,
@@ -427,7 +437,7 @@ const SearchHistorySchema = new Schema({
       'Herbs', 
       'Houseplants', 
       'Tools',
-      'Products',
+      ''
     ],
     required: false, 
   }, 
@@ -474,7 +484,7 @@ const FarmerSchema = new Schema({
     default: [] 
   },
   financialStatus: { type: FinancialStatusSchema, required: false },
-  ProviderID: { type: String, required: false, trim: true },
+  ProviderID: { type: String, required: false, unique: true, trim: true },
   availableLandForRent: { type: Boolean, default: false, required: false },
   rentedLandDetails: [
     {
@@ -535,6 +545,12 @@ const FarmerSchema = new Schema({
     type: [String],
     enum: USER_TYPES,
     required: false,
+    validate: {
+      validator: function(value) {
+        return value.length > 0;
+      },
+      message: 'At least one user type must be specified.'
+    }
   },
   aadharNumber: { type: String, required: false },
   aadharVerificationStatus: {

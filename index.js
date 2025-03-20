@@ -103,6 +103,11 @@ app.use('/plantDiseases', plantDiseasesRoutes);
 const MarketsRoutes = require('./routes/marketPriceRoutes');
 app.use('/api/Markets', MarketsRoutes);
 
+const AgentsRoutes = require('./routes/Agents');
+app.use('/api/Agents', AgentsRoutes);
+
+const UserRoutes = require('./routes/UserRoutes');
+app.use('/api/User', UserRoutes);
 
 
 

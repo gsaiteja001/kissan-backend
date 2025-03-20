@@ -6,7 +6,7 @@ const Farmer = require('../modal/farmers');
 
 
 // Get Search History by farmerId
-router.get('/getSearchHistory/:farmerId', async (req, res) => {
+router.get('/api/searchHistory/:farmerId', async (req, res) => {
   const { farmerId } = req.params;
   
   try {
@@ -71,67 +71,63 @@ router.get('/api/searchHistory', async (req, res) => {
 
 
 // Delete a Specific Search Query by queryId
-router.delete('/deleteQuery/:farmerId/:_id', async (req, res) => {
-  const { farmerId, _id } = req.params;
-
-  try {
-    const farmer = await Farmer.findOne({ farmerId });
-    if (!farmer) {
-      return res.status(404).json({ message: 'Farmer not found' });
+router.delete('/api/searchHistory/:farmerId/:queryId', async (req, res) => {
+    const { farmerId, queryId } = req.params;
+  
+    try {
+      const farmer = await Farmer.findOne({ farmerId });
+      if (!farmer) {
+        return res.status(404).json({ message: 'Farmer not found' });
+      }
+  
+      // Find the index of the search history entry with the specific queryId
+      const queryIndex = farmer.searchHistory.findIndex(query => query._id.toString() === queryId);
+      if (queryIndex === -1) {
+        return res.status(404).json({ message: 'Search query not found' });
+      }
+  
+      // Remove the search history entry
+      farmer.searchHistory.splice(queryIndex, 1);
+      await farmer.save();
+  
+      res.json({ message: 'Search query deleted successfully' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error' });
     }
-
-    // Find the index of the search history entry with the specific _id
-    const queryIndex = farmer.searchHistory.findIndex(query => query._id.toString() === _id);
-    if (queryIndex === -1) {
-      return res.status(404).json({ message: 'Search query not found' });
-    }
-
-    // Remove the search history entry
-    farmer.searchHistory.splice(queryIndex, 1);
-    await farmer.save();
-
-    res.json({ message: 'Search query deleted successfully' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
+  });
   
   
+
 // Post a New Search Query
-router.post('/save/:farmerId', async (req, res) => {
-  const { farmerId } = req.params;
-  const { query, category, location, resultsCount, additionalInfo } = req.body;
-
-  // Create the new search history object
-  const newSearchHistory = {
-    query,
-    category,
-    location,
-    resultsCount,
-    additionalInfo,
-    searchDate: new Date() // Optional: add the current date
-  };
-
-  try {
-    const farmer = await Farmer.findOne({ farmerId });
-    if (!farmer) {
-      console.log('Farmer not found:', farmerId);
-      return res.status(404).json({ message: 'Farmer not found' });
+router.post('/api/searchHistory/:farmerId', async (req, res) => {
+    const { farmerId } = req.params;
+    const { query, category, location, resultsCount, additionalInfo } = req.body;
+  
+    try {
+      const farmer = await Farmer.findOne({ farmerId });
+      if (!farmer) {
+        return res.status(404).json({ message: 'Farmer not found' });
+      }
+  
+      // Create a new search history entry
+      const newSearchHistory = {
+        query,
+        category,
+        location,
+        resultsCount,
+        additionalInfo,
+        searchDate: new Date()
+      };
+  
+      farmer.searchHistory.push(newSearchHistory);
+      await farmer.save();
+  
+      res.status(201).json(newSearchHistory);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error' });
     }
-  
-    // Log and save the new search history
-    console.log('New search history:', newSearchHistory);
-    farmer.searchHistory.push(newSearchHistory);
-    await farmer.save();
-  
-    res.status(201).json(newSearchHistory);
-  } catch (err) {
-    console.error('Error saving search history:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
+  });
   
   module.exports = router;
