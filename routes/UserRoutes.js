@@ -211,7 +211,7 @@ router.get('/:userId', async (req, res) => {
     const { userId } = req.params;
     
     // Find the user by the userId field instead of _id
-    const user = await User.findOne({ userId: mongoose.Types.ObjectId(userId) });
+    const user = await User.findOne({ userId: userId });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
