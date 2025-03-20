@@ -1,4 +1,6 @@
 const express = require('express');
+const mongoose = require('mongoose');
+
 const User = require('../modal/User');  
 
 const bcrypt = require('bcryptjs'); 
@@ -43,7 +45,6 @@ router.post('/addusers', async (req, res) => {
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
-
 
 
 router.post('/signup', async (req, res) => {
@@ -117,8 +118,8 @@ router.post('/login', async (req, res) => {
 
     // Generate a JWT token (with a secret key)
     const token = jwt.sign({ userId: user._id, username: user.credentials.username }, 'your_secret_key', { expiresIn: '1h' });
-
-    res.status(200).json({ message: 'Login successful', token });
+    const userId = user.userId;
+    res.status(200).json({ message: 'Login successful', token, userId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to login' });
