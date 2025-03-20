@@ -46,49 +46,55 @@ router.post('/addusers', async (req, res) => {
 
 
 
-
-// Route to create a new user (SignUp)
 router.post('/signup', async (req, res) => {
-    try {
-      const { userId, credentials, name, email, phoneNumber, address, userRoles } = req.body;
-  
-      // Validate the roles
-      const validRoles = [
-        'superAdmin', 'serviceAdmin', 'ProductAdmin', 'Vendor', 'supportAdmin', 
-        'supportAgent', 'financialAdmin', 'groupsAdmin', 'groupLeader'
-      ];
-  
-      if (!userRoles.every(role => validRoles.includes(role))) {
-        return res.status(400).json({ error: 'Invalid user role(s)' });
-      }
-  
-      // Check if email already exists
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ error: 'Email is already registered' });
-      }
-  
-      const newUser = new User({
-        userId,
-        credentials,
-        name,
-        email,
-        phoneNumber,
-        address,
-        userRoles
-      });
-  
-      // Save the user in the database
-      await newUser.save();
-  
-      res.status(201).json({ message: 'User created successfully', user: newUser });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Failed to create user' });
-    }
-  });
+  try {
+    const { name, email, phoneNumber, address, userRoles, username, password } = req.body;
 
-  
+    // Validate the roles
+    const validRoles = [
+      'superAdmin', 'serviceAdmin', 'ProductAdmin', 'Vendor', 'supportAdmin',
+      'supportAgent', 'financialAdmin', 'groupsAdmin', 'groupLeader'
+    ];
+
+    if (!userRoles.every(role => validRoles.includes(role))) {
+      return res.status(400).json({ error: 'Invalid user role(s)' });
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email is already registered' });
+    }
+
+    // If everything is fine, create the new user
+    const newUser = new User({
+      userId: new mongoose.Types.ObjectId(), // Automatically generate userId
+      credentials: {
+        username,
+        password,  // You should hash the password before saving it in the database
+      },
+      name,
+      email,
+      phoneNumber,
+      address,
+      userRoles
+    });
+
+    // Hash the password before saving (important)
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    newUser.credentials.password = await bcrypt.hash(newUser.credentials.password, salt);
+
+    // Save the user to the database
+    await newUser.save();
+
+    res.status(201).json({ message: 'User created successfully', user: newUser });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
 
 
 
