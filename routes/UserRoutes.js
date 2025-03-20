@@ -207,22 +207,22 @@ router.delete('/deleteuser/:userId', async (req, res) => {
 
   // Route to fetch user by userId
 router.get('/:userId', async (req, res) => {
-    try {
-      const { userId } = req.params;
-  
-      // Fetch the user by userId
-      const user = await User.findById(userId);
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-  
-      res.status(200).json({ user });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Failed to fetch user' });
-    }
-  });
+  try {
+    const { userId } = req.params;
+    
+    // Find the user by the userId field instead of _id
+    const user = await User.findOne({ userId: userId });
 
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json({ user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
 
 
 
