@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const moment = require('moment-timezone'); 
 
 const User = require('../modal/User');  
 
@@ -69,10 +70,10 @@ router.post('/signup', async (req, res) => {
 
     // If everything is fine, create the new user
     const newUser = new User({
-      userId: new mongoose.Types.ObjectId(), // Automatically generate userId
+      userId: new mongoose.Types.ObjectId(), 
       credentials: {
         username,
-        password,  // You should hash the password before saving it in the database
+        password,  
       },
       name,
       email,
@@ -98,7 +99,6 @@ router.post('/signup', async (req, res) => {
 
 
 
-
 // Route for user login
 router.post('/login', async (req, res) => {
   try {
@@ -116,15 +116,21 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
+    // Update lastloginTime to current IST time
+    const currentISTTime = moment.tz('Asia/Kolkata').format();  // Get current time in IST
+    user.lastloginTime = currentISTTime;
+    await user.save();  // Save the updated user document
+
     // Generate a JWT token (with a secret key)
     const token = jwt.sign({ userId: user._id, username: user.credentials.username }, 'your_secret_key', { expiresIn: '1h' });
-    const userId = user.userId;
-    res.status(200).json({ message: 'Login successful', token, userId });
+
+    res.status(200).json({ message: 'Login successful', token, userId: user.userId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to login' });
   }
 });
+
 
 
 // Route to edit an existing user
@@ -206,23 +212,25 @@ router.delete('/deleteuser/:userId', async (req, res) => {
 
 
   // Route to fetch user by userId
-router.get('/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    // Find the user by the userId field instead of _id
-    const user = await User.findOne({ userId: userId });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+  router.get('/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Find the user by the userId field instead of _id
+      const user = await User.findOne({ userId: userId });
+  
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      res.status(200).json({ user });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch user' });
     }
+  });
+  
 
-    res.status(200).json({ user });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
 
 
 
