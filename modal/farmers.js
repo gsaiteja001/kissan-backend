@@ -32,9 +32,27 @@ const AddressSchema = new Schema({
 // Updated Subschema for Farm Details
 const FarmDetailsSchema = new Schema({
   farmId: { type: String, required: false },
-  farmName: { type: String, required: false },
+  farmName: { type: String, required: true },
   area: { type: Number, required: false }, // in acres or hectares
   soilType: { type: String, required: false },
+
+  surveyNumber: { type: String, required: false },
+
+  // Existing area field
+  farmersEstarea: { type: Number, required: false }, 
+
+  // <--- New field for tracking the unit of area
+  farmersEstareaUnit: {
+    type: String,
+    enum: ['acres', 'hectares'],
+    default: 'acres',
+    required: false,
+  },
+
+  // Additional fields
+  revenueVillage: { type: String, required: false },
+  mandal: { type: String, required: false },
+
   farmType: {
     type: String,
     enum: ['FullTimeFarmer', 'PartTimeFarmer', 'Planter'],
