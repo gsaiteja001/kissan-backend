@@ -265,9 +265,6 @@ const FarmerTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: FARMER_CATEGORIES,
-    required: function() {
-      return this.parent().userTypes && this.parent().userTypes.includes('farmer');
-    }
   },
   fertilizerChoice: {
     type: String,
@@ -281,23 +278,14 @@ const GardenerTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: GARDENER_CATEGORIES,
-    required: function() {
-      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
-    }
   },
   userExperience: {
     type: String,
     enum: GARDENER_EXPERIENCES,
-    required: function() {
-      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
-    }
   },
   userChoice: {
     type: String,
     enum: GARDENER_CHOICES,
-    required: function() {
-      return this.parent().userTypes && this.parent().userTypes.includes('gardener');
-    }
   }
 }, { _id: false });
 
@@ -306,9 +294,6 @@ const AnimalHusbandryTypeDetailsSchema = new Schema({
   categories: {
     type: [String],
     enum: ANIMAL_HUSBANDRY_CATEGORIES,
-    required: function() {
-      return this.parent().userTypes && this.parent().userTypes.includes('animalHusbandry');
-    }
   },
   breedName: {
     type: String,
@@ -563,12 +548,6 @@ const FarmerSchema = new Schema({
     type: [String],
     enum: USER_TYPES,
     required: false,
-    validate: {
-      validator: function(value) {
-        return value.length > 0;
-      },
-      message: 'At least one user type must be specified.'
-    }
   },
   aadharNumber: { type: String, required: false },
   aadharVerificationStatus: {
