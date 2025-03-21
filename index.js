@@ -1684,64 +1684,102 @@ app.get('/api/farmers/:farmerId/address', async (req, res) => {
 
 
 
-
 // POST /api/farmers/:farmerId/farms
 app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   const { farmerId } = req.params;
-  const { area, location, boundary, farmName } = req.body; 
 
-  console.log('farmerId', farmerId);
+  // Destructure all the fields you expect from the frontend
+  const {
+    farmName,
+    boundary,        // expecting a GeoJSON Polygon { type: 'Polygon', coordinates: [...] }
+    location,        // expecting a GeoJSON Point { type: 'Point', coordinates: [...] }
+    farmersEstarea,  // numeric value entered by user
+    farmersEstareaUnit, // 'acres' or 'hectares'
+    revenueVillage,
+    mandal,
+    surveyNumber,
+    area,
+    // Optional fields (soilType, farmType, etc.)
+    soilType,
+    farmType,
+    farmingCapacity,
+  } = req.body;
 
   // Basic validation
-  if (!area || !location || !boundary || !farmName) {
-    return res.status(400).json({ message: 'Area, location, boundary, and farmName are required.' });
+  if (!farmName || !boundary || !location) {
+    return res.status(400).json({
+      message: 'farmName, boundary, and location are required.',
+    });
   }
 
   try {
     // Find the farmer by farmerId
-    const farmer = await farmers.findOne({ farmerId });
-
+    const farmer = await Farmer.findOne({ farmerId });
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
     }
 
+    // Generate a unique farmId
     const farmId = `FARMID${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
     // Check if farmId already exists to maintain uniqueness
-    if (farmer.farms.some(farm => farm.farmId === farmId)) {
-      return res.status(400).json({ message: 'Duplicate farmId generated. Please try again.' });
+    if (farmer.farms.some((farm) => farm.farmId === farmId)) {
+      return res
+        .status(400)
+        .json({ message: 'Duplicate farmId generated. Please try again.' });
     }
 
-    // Create a new farm entry
+    // Convert the farmersEstarea to a number
+    const numericEstarea = parseFloat(farmersEstarea) || 0;
+
+    // Create the new Farm object according to your updated schema
     const newFarm = {
       farmId,
-      farmName: farmName || '',
-      area,
-      soilType: req.body.soilType || '',
-      farmType: req.body.farmType || 'FullTimeFarmer',
-      farmingCapacity: req.body.farmingCapacity || 'Small',
-      location,
-      surveyNumber: req.body.surveyNumber || '',
-      boundary,
+      farmName,
+      surveyNumber,
+      // Store the user’s raw entry & unit
+      farmersEstarea: numericEstarea,
+      farmersEstareaUnit: farmersEstareaUnit || 'acres', 
+      // Optionally also keep "area" in square meters
+      area: area || 0,
+
+      // Additional optional fields
+      soilType: soilType || '',
+      farmType: farmType || 'FullTimeFarmer',
+      farmingCapacity: farmingCapacity || 'Small',
+
+      // New address fields
+      revenueVillage: revenueVillage || '',
+      mandal: mandal || '',
+
+      // GeoJSON fields
+      location,  // a Point with [longitude, latitude, elevation]
+      boundary,  // a Polygon with coordinates array
     };
 
     // Add the new farm to the farms array
     farmer.farms.push(newFarm);
 
-    // Optionally, update profileCompleteness
+    // Optionally update the profileCompleteness
     if (farmer.profileCompleteness < 100) {
-      farmer.profileCompleteness = Math.min(farmer.profileCompleteness + 5, 100);
+      farmer.profileCompleteness = Math.min(
+        farmer.profileCompleteness + 5,
+        100
+      );
     }
 
     // Save the updated farmer document
     await farmer.save();
 
-    return res.status(201).json({ message: 'Farm saved successfully.', farm: newFarm });
+    return res
+      .status(201)
+      .json({ message: 'Farm saved successfully.', farm: newFarm });
   } catch (error) {
     console.error('Error saving farm:', error);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 });
+
   
   
 
