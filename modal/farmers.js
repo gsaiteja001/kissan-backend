@@ -236,6 +236,7 @@ const CartItemSchema = new Schema({
   variant: { type: Object, required: false, default: null },
   basePrice: { type: Number, required: true },
   quantity: { type: Number, required: true, default: 1 },
+  deliveryInfo: { type: Object, required: true, default: null },
 });
 
 // Enumerations for User Types and Subcategories
