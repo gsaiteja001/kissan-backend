@@ -25,7 +25,7 @@ const ShippingInfoDetailsSchema = new Schema({
 
 // Subschema for Order Items (updated)
 const OrderItemSchema = new Schema({
-  orderId: { type: String, required: true }, // Added orderId for each order item
+  orderId: { type: String, required: false }, // Added orderId for each order item
   productId: { type: String, required: true, },
   variantId: { type: String, required: false,  },
   productName: { type: String, required: true },
