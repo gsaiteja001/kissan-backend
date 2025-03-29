@@ -20,7 +20,7 @@ const ShippingInfoDetailsSchema = new Schema({
   estimatedDeliveryDate: { type: Date, required: false },
   estimatedDeliveryTime: { type: String, required: false },
   threesholdDeliveryDate: { type: Date, required: false },
-  deliveryType: { type: String, enum: ['Hazardous', 'Fragile'], required: false },
+  deliveryType: { type: String, enum: ['Hazardous', 'Fragile','Standard'], required: false },
 }, { _id: false });
 
 // Subschema for Order Items (updated)
