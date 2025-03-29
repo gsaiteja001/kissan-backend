@@ -1489,18 +1489,24 @@ app.put('/farmers/:farmerId/cart', async (req, res) => {
       return res.status(400).json({ message: 'cartItems must be an array.' });
     }
 
-    // Validate each cart item against the updated frontend schema
+    // Validate each cart item against the updated frontend schema:
+    // - productId: non-empty string
+    // - basePrice: number
+    // - quantity: positive number
+    // - variant: either null or a non-empty object (if provided)
+    // - deliveryInfo: must be a non-empty object
     const isValid = cartItems.every(item => {
       return item &&
-        typeof item.productId === 'string' && item.productId.trim() !== '' &&
-        typeof item.basePrice === 'number' &&
-        typeof item.quantity === 'number' && item.quantity > 0 &&
-        (item.variant === null || (typeof item.variant === 'object' && Object.keys(item.variant).length > 0));
+             typeof item.productId === 'string' && item.productId.trim() !== '' &&
+             typeof item.basePrice === 'number' &&
+             typeof item.quantity === 'number' && item.quantity > 0 &&
+             (item.variant === null || (typeof item.variant === 'object' && Object.keys(item.variant).length > 0)) &&
+             (item.deliveryInfo && typeof item.deliveryInfo === 'object' && Object.keys(item.deliveryInfo).length > 0);
     });
 
     if (!isValid) {
       return res.status(400).json({ 
-        message: 'Each cartItem must have productId, basePrice, finalPrice, quantity and optionally a valid variant, discount, and deliveryInfo.' 
+        message: 'Each cartItem must have productId, basePrice, quantity, and deliveryInfo. Optionally include a valid variant.' 
       });
     }
 
