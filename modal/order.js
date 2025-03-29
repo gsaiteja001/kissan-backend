@@ -117,128 +117,128 @@ function arrayLimit(val) {
   return val.length > 0;
 }
 
-// // Pre-save middleware to calculate totals and assign orderId to orderItems if missing
-// OrderSchema.pre('save', async function (next) {
-//   let totalQuantity = 0;
-//   let totalWeight = 0;
-//   let totalPrice = 0;
+// Pre-save middleware to calculate totals and assign orderId to orderItems if missing
+OrderSchema.pre('save', async function (next) {
+  let totalQuantity = 0;
+  let totalWeight = 0;
+  let totalPrice = 0;
 
-//   try {
-//     for (let item of this.orderItems) {
-//       // Ensure each order item has the parent orderId
-//       if (!item.orderId) {
-//         item.orderId = this.orderId;
-//       }
+  try {
+    for (let item of this.orderItems) {
+      // Ensure each order item has the parent orderId
+      if (!item.orderId) {
+        item.orderId = this.orderId;
+      }
 
-//       // Fetch product and variant details
-//       const product = await mongoose.model('Product').findOne({ productId: item.productId });
-//       if (!product) {
-//         throw new Error(`Product with productId ${item.productId} not found.`);
-//       }
+      // Fetch product and variant details
+      const product = await mongoose.model('Product').findOne({ productId: item.productId });
+      if (!product) {
+        throw new Error(`Product with productId ${item.productId} not found.`);
+      }
 
-//       let variant = null;
-//       if (item.variantId) {
-//         variant = product.variants.find(v => v.variantId === item.variantId);
-//         if (!variant) {
-//           throw new Error(`Variant with variantId ${item.variantId} not found for productId ${item.productId}.`);
-//         }
-//       }
+      let variant = null;
+      if (item.variantId) {
+        variant = product.variants.find(v => v.variantId === item.variantId);
+        if (!variant) {
+          throw new Error(`Variant with variantId ${item.variantId} not found for productId ${item.productId}.`);
+        }
+      }
 
-//       // Assign productName from ProductSchema
-//       item.productName = product.name.en || product.name;
+      // Assign productName from ProductSchema
+      item.productName = product.name.en || product.name;
 
-//       // Assign SKU from variant or product
-//       item.sku = variant ? variant.sku : product.sku || '';
+      // Assign SKU from variant or product
+      item.sku = variant ? variant.sku : product.sku || '';
 
-//       // Assign size from variant
-//       item.size = variant ? variant.size : '';
+      // Assign size from variant
+      item.size = variant ? variant.size : '';
 
-//       // Assign unitPrice and finalPrice
-//       item.unitPrice = variant && variant.finalPrice > 0 ? variant.finalPrice : 
-//                        product.finalPrice > 0 ? product.finalPrice : 
-//                        product.price || 0;
-//       item.finalPrice = item.unitPrice;
+      // Assign unitPrice and finalPrice
+      item.unitPrice = variant && variant.finalPrice > 0 ? variant.finalPrice : 
+                       product.finalPrice > 0 ? product.finalPrice : 
+                       product.price || 0;
+      item.finalPrice = item.unitPrice;
 
-//       // Calculate totalPrice
-//       item.totalPrice = item.unitPrice * item.quantity;
+      // Calculate totalPrice
+      item.totalPrice = item.unitPrice * item.quantity;
 
-//       // Assign weight from variant or product
-//       item.weight = variant ? variant.weight : product.weight || 0;
+      // Assign weight from variant or product
+      item.weight = variant ? variant.weight : product.weight || 0;
 
-//       // Calculate totalItemWeight
-//       item.totalItemWeight = item.weight * item.quantity;
+      // Calculate totalItemWeight
+      item.totalItemWeight = item.weight * item.quantity;
 
-//       // Assign hazardous, fragile, and itemType from product
-//       item.hazardous = product.hazardous;
-//       item.fragile = product.fragile;
-//       item.itemType = product.itemType;
+      // Assign hazardous, fragile, and itemType from product
+      item.hazardous = product.hazardous;
+      item.fragile = product.fragile;
+      item.itemType = product.itemType;
 
-//       // Accumulate totals
-//       totalQuantity += item.quantity;
-//       totalWeight += item.totalItemWeight;
-//       totalPrice += item.totalPrice;
-//     }
+      // Accumulate totals
+      totalQuantity += item.quantity;
+      totalWeight += item.totalItemWeight;
+      totalPrice += item.totalPrice;
+    }
 
-//     this.totalQuantity = totalQuantity;
-//     this.totalWeight = totalWeight;
-//     this.totalPrice = totalPrice;
+    this.totalQuantity = totalQuantity;
+    this.totalWeight = totalWeight;
+    this.totalPrice = totalPrice;
 
-//     next();
-//   } catch (error) {
-//     next(error);
-//   }
-// });
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
-// // Post 'save' hook to handle 'Delivered' status
-// OrderSchema.post('save', async function(doc, next) {
-//   if (doc.orderStatus === 'Delivered') {
-//     const session = this.$session();
-//     if (!session) {
-//       console.error('No session available for creating SalesTransaction and StockTransaction.');
-//       return next();
-//     }
+// Post 'save' hook to handle 'Delivered' status
+OrderSchema.post('save', async function(doc, next) {
+  if (doc.orderStatus === 'Delivered') {
+    const session = this.$session();
+    if (!session) {
+      console.error('No session available for creating SalesTransaction and StockTransaction.');
+      return next();
+    }
 
-//     // Iterate through each OrderItem to handle transactions per warehouse
-//     for (let item of doc.orderItems) {
-//       const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId, productId: item.productId, warehouseId: item.fulfillingWarehouseId }).session(session);
-//       if (!existingSalesTx) {
-//         try {
-//           await createSalesAndStockTransaction(doc, item, session);
-//         } catch (error) {
-//           console.error('Error creating SalesTransaction and StockTransaction:', error);
-//           return next(error);
-//         }
-//       }
-//     }
-//   }
-//   next();
-// });
+    // Iterate through each OrderItem to handle transactions per warehouse
+    for (let item of doc.orderItems) {
+      const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId, productId: item.productId, warehouseId: item.fulfillingWarehouseId }).session(session);
+      if (!existingSalesTx) {
+        try {
+          await createSalesAndStockTransaction(doc, item, session);
+        } catch (error) {
+          console.error('Error creating SalesTransaction and StockTransaction:', error);
+          return next(error);
+        }
+      }
+    }
+  }
+  next();
+});
 
-// // Post 'findOneAndUpdate' hook to handle 'Delivered' status
-// OrderSchema.post('findOneAndUpdate', async function(doc, next) {
-//   if (!doc) return next();
+// Post 'findOneAndUpdate' hook to handle 'Delivered' status
+OrderSchema.post('findOneAndUpdate', async function(doc, next) {
+  if (!doc) return next();
 
-//   if (doc.orderStatus === 'Delivered') {
-//     const session = this.getOptions().session;
-//     if (!session) {
-//       console.error('No session available for creating SalesTransaction and StockTransaction.');
-//       return next();
-//     }
+  if (doc.orderStatus === 'Delivered') {
+    const session = this.getOptions().session;
+    if (!session) {
+      console.error('No session available for creating SalesTransaction and StockTransaction.');
+      return next();
+    }
 
-//     for (let item of doc.orderItems) {
-//       const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId, productId: item.productId, warehouseId: item.fulfillingWarehouseId }).session(session);
-//       if (!existingSalesTx) {
-//         try {
-//           await createSalesAndStockTransaction(doc, item, session);
-//         } catch (error) {
-//           console.error('Error creating SalesTransaction and StockTransaction:', error);
-//           return next(error);
-//         }
-//       }
-//     }
-//   }
-//   next();
-// });
+    for (let item of doc.orderItems) {
+      const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId, productId: item.productId, warehouseId: item.fulfillingWarehouseId }).session(session);
+      if (!existingSalesTx) {
+        try {
+          await createSalesAndStockTransaction(doc, item, session);
+        } catch (error) {
+          console.error('Error creating SalesTransaction and StockTransaction:', error);
+          return next(error);
+        }
+      }
+    }
+  }
+  next();
+});
 
 // // Helper function to create SalesTransaction and StockTransaction
 // async function createSalesAndStockTransaction(order, item, session) {
