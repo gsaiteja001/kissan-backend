@@ -12,10 +12,22 @@ const AddressSchema = new Schema({
   country: { type: String, required: false },
 }, { _id: false });
 
-// Subschema for Order Items
+// New Subschema for Shipping Info Details (moved to OrderItem)
+const ShippingInfoDetailsSchema = new Schema({
+  shippingId: { type: String, required: false },
+  fromAddress: AddressSchema,
+  toAddress: AddressSchema,
+  estimatedDeliveryDate: { type: Date, required: false },
+  estimatedDeliveryTime: { type: String, required: false },
+  threesholdDeliveryDate: { type: Date, required: false },
+  deliveryType: { type: String, enum: ['Hazardous', 'Fragile'], required: false },
+}, { _id: false });
+
+// Subschema for Order Items (updated)
 const OrderItemSchema = new Schema({
-  productId: { type: String, required: true, ref: 'Product' },
-  variantId: { type: String, required: false, ref: 'Product.variants' },
+  orderId: { type: String, required: true }, // Added orderId for each order item
+  productId: { type: String, required: true, },
+  variantId: { type: String, required: false,  },
   productName: { type: String, required: true },
   sku: { type: String, required: false },
   size: { type: String, required: false },
@@ -25,10 +37,16 @@ const OrderItemSchema = new Schema({
   totalPrice: { type: Number, required: true, min: [0, 'Total price cannot be negative'] },
   weight: { type: Number, required: false },
   totalItemWeight: { type: Number, required: false },
+  status: {
+    type: String,
+    enum: ['Placed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'],
+    required: false,
+  },
   hazardous: { type: Boolean, required: false, default: false },
   fragile: { type: Boolean, required: false, default: false },
   itemType: { type: String, required: false, enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'] },
-  fulfillingWarehouseId: { type: String, required: true, ref: 'Warehouse' }, // Added fulfillingWarehouseId
+  fulfillingWarehouseId: { type: String, required: true, ref: 'Warehouse' },
+  shippingInfoDetails: { type: ShippingInfoDetailsSchema, required: false } // New shipping info per order item
 }, { _id: false });
 
 // Subschema for Payment Details
@@ -48,21 +66,6 @@ const PaymentDetailsSchema = new Schema({
   amountPaid: { type: Number, required: false, min: [0, 'Amount paid cannot be negative'] },
 }, { _id: false });
 
-// Subschema for Shipping Details
-const ShippingDetailsSchema = new Schema({
-  address: AddressSchema,
-  distance: { type: Number, required: false },
-  estimatedDeliveryDate: { type: Date, required: false },
-  shippingMethod: {
-    type: String,
-    enum: ['Standard', 'Express', 'Overnight'],
-    default: 'Standard',
-    required: true,
-  },
-  trackingNumber: { type: String, required: false },
-  carrier: { type: String, required: false },
-}, { _id: false });
-
 // Subschema for Order Status History
 const OrderStatusHistorySchema = new Schema({
   status: {
@@ -74,7 +77,7 @@ const OrderStatusHistorySchema = new Schema({
   remarks: { type: String, required: false },
 }, { _id: false });
 
-// Main Order Schema
+// Main Order Schema (removed shippingDetails field)
 const OrderSchema = new Schema(
   {
     orderId: { type: String, default: uuidv4, unique: true, immutable: true, trim: true },
@@ -95,7 +98,6 @@ const OrderSchema = new Schema(
     },
     statusHistory: { type: [OrderStatusHistorySchema], required: false, default: [] },
     paymentDetails: { type: PaymentDetailsSchema, required: false },
-    shippingDetails: { type: ShippingDetailsSchema, required: false },
     orderDate: { type: Date, default: Date.now, required: true },
     shippedDate: { type: Date, required: false },
     deliveredDate: { type: Date, required: false },
@@ -105,7 +107,7 @@ const OrderSchema = new Schema(
     reasonForReturn: { type: String, required: false },
     customerRemarks: { type: String, required: false },
     adminRemarks: { type: String, required: false },
-    // Removed fulfillingWarehouse from the main OrderSchema
+    // shippingDetails removed from main OrderSchema
   },
   { timestamps: true }
 );
@@ -115,7 +117,7 @@ function arrayLimit(val) {
   return val.length > 0;
 }
 
-// Pre-save middleware to calculate totals
+// Pre-save middleware to calculate totals and assign orderId to orderItems if missing
 OrderSchema.pre('save', async function (next) {
   let totalQuantity = 0;
   let totalWeight = 0;
@@ -123,6 +125,11 @@ OrderSchema.pre('save', async function (next) {
 
   try {
     for (let item of this.orderItems) {
+      // Ensure each order item has the parent orderId
+      if (!item.orderId) {
+        item.orderId = this.orderId;
+      }
+
       // Fetch product and variant details
       const product = await mongoose.model('Product').findOne({ productId: item.productId });
       if (!product) {
@@ -138,7 +145,7 @@ OrderSchema.pre('save', async function (next) {
       }
 
       // Assign productName from ProductSchema
-      item.productName = product.name.en || product.name; // Adjust based on localization
+      item.productName = product.name.en || product.name;
 
       // Assign SKU from variant or product
       item.sku = variant ? variant.sku : product.sku || '';
@@ -150,7 +157,7 @@ OrderSchema.pre('save', async function (next) {
       item.unitPrice = variant && variant.finalPrice > 0 ? variant.finalPrice : 
                        product.finalPrice > 0 ? product.finalPrice : 
                        product.price || 0;
-      item.finalPrice = item.unitPrice; // Captured at order time
+      item.finalPrice = item.unitPrice;
 
       // Calculate totalPrice
       item.totalPrice = item.unitPrice * item.quantity;
@@ -193,20 +200,17 @@ OrderSchema.post('save', async function(doc, next) {
 
     // Iterate through each OrderItem to handle transactions per warehouse
     for (let item of doc.orderItems) {
-      // Check if SalesTransaction already exists for this OrderItem
       const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId, productId: item.productId, warehouseId: item.fulfillingWarehouseId }).session(session);
       if (!existingSalesTx) {
         try {
           await createSalesAndStockTransaction(doc, item, session);
         } catch (error) {
           console.error('Error creating SalesTransaction and StockTransaction:', error);
-          // Optionally, you can throw an error to rollback the transaction
           return next(error);
         }
       }
     }
   }
-
   next();
 });
 
@@ -215,35 +219,29 @@ OrderSchema.post('findOneAndUpdate', async function(doc, next) {
   if (!doc) return next();
 
   if (doc.orderStatus === 'Delivered') {
-    // Access the session from the query options
     const session = this.getOptions().session;
     if (!session) {
       console.error('No session available for creating SalesTransaction and StockTransaction.');
       return next();
     }
 
-    // Iterate through each OrderItem to handle transactions per warehouse
     for (let item of doc.orderItems) {
-      // Check if SalesTransaction already exists for this OrderItem
       const existingSalesTx = await mongoose.model('SalesTransaction').findOne({ orderId: doc.orderId, productId: item.productId, warehouseId: item.fulfillingWarehouseId }).session(session);
       if (!existingSalesTx) {
         try {
           await createSalesAndStockTransaction(doc, item, session);
         } catch (error) {
           console.error('Error creating SalesTransaction and StockTransaction:', error);
-          // Optionally, throw error to rollback the transaction
           return next(error);
         }
       }
     }
   }
-
   next();
 });
 
 // Helper function to create SalesTransaction and StockTransaction
 async function createSalesAndStockTransaction(order, item, session) {
-  // Prepare SalesTransaction data
   const salesProductsData = [{
     productId: item.productId,
     quantity: item.quantity,
@@ -254,7 +252,6 @@ async function createSalesAndStockTransaction(order, item, session) {
     totalCost: item.totalCost, // Ensure totalCost is defined or calculate accordingly
   }];
 
-  // Create SalesTransaction
   const SalesTransaction = mongoose.model('SalesTransaction');
   const salesTransaction = new SalesTransaction({
     orderId: order.orderId,
@@ -265,10 +262,8 @@ async function createSalesAndStockTransaction(order, item, session) {
     paymentDetails: order.paymentDetails || {},
     notes: order.adminRemarks || order.customerRemarks || '',
   });
-
   await salesTransaction.save({ session });
 
-  // Prepare StockTransaction data
   const stockOutProducts = [{
     productId: item.productId,
     variantId: item.variantId || null,
@@ -277,7 +272,6 @@ async function createSalesAndStockTransaction(order, item, session) {
     unitPrice: item.unitPrice,
   }];
 
-  // Create StockTransaction
   const StockTransaction = mongoose.model('StockTransaction');
   const stockOutTransaction = new StockTransaction({
     transactionType: 'stockOut',
@@ -288,10 +282,8 @@ async function createSalesAndStockTransaction(order, item, session) {
     relatedTransactionType: 'SalesTransaction',
     relatedTransaction: salesTransaction._id,
   });
-
   await stockOutTransaction.save({ session });
 
-  // Link StockTransaction to SalesTransaction
   salesTransaction.stockTransaction = stockOutTransaction._id;
   await salesTransaction.save({ session });
 }
@@ -299,7 +291,7 @@ async function createSalesAndStockTransaction(order, item, session) {
 // Indexes for Optimization
 OrderSchema.index({ orderId: 1 });
 OrderSchema.index({ farmerId: 1 });
-OrderSchema.index({ 'orderItems.fulfillingWarehouseId': 1 }); // Updated index
+OrderSchema.index({ 'orderItems.fulfillingWarehouseId': 1 });
 OrderSchema.index({ orderStatus: 1 });
 OrderSchema.index({ orderDate: -1 });
 
