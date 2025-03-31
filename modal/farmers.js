@@ -72,11 +72,9 @@ const FarmDetailsSchema = new Schema({
       type: String,
       enum: ['Polygon'],
       default: 'Polygon',
-      required: true,
     },
     coordinates: {
       type: [[[Number]]], // [[[longitude, latitude, elevation], ...], ...]
-      required: true,
     },
   },
 });
