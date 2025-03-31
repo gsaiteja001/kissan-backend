@@ -1712,7 +1712,7 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   } = req.body;
 
   // Basic validation
-  if (!farmName || !boundary || !location) {
+  if (!farmName || !location) {
     return res.status(400).json({
       message: 'farmName, boundary, and location are required.',
     });
@@ -1760,7 +1760,7 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
 
       // GeoJSON fields
       location,  // a Point with [longitude, latitude, elevation]
-      boundary,  // a Polygon with coordinates array
+      ...(boundary && { boundary }),
     };
 
     // Add the new farm to the farms array
