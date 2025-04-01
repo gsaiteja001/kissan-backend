@@ -1697,8 +1697,8 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   // Destructure all the fields you expect from the frontend
   const {
     farmName,
-    boundary,        // expecting a GeoJSON Polygon { type: 'Polygon', coordinates: [...] }
-    location,        // expecting a GeoJSON Point { type: 'Point', coordinates: [...] }
+    boundary,        // optional GeoJSON Polygon
+    location,        // required: GeoJSON Point
     farmersEstarea,  // numeric value entered by user
     farmersEstareaUnit, // 'acres' or 'hectares'
     revenueVillage,
@@ -1711,34 +1711,36 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
     farmingCapacity,
   } = req.body;
 
-  // Basic validation
+  // Basic validation:
+  // Now boundary is NOT required, but farmName and location still are.
   if (!farmName || !location) {
     return res.status(400).json({
-      message: 'farmName, boundary, and location are required.',
+      message: 'farmName and location are required.',
     });
   }
 
   try {
-    // Find the farmer by farmerId
+    // 1) Find the farmer by farmerId
     const farmer = await farmers.findOne({ farmerId });
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
     }
 
-    // Generate a unique farmId
+    // 2) Generate a unique farmId
     const farmId = `FARMID${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-    // Check if farmId already exists to maintain uniqueness
+    // 3) Check if farmId already exists
     if (farmer.farms.some((farm) => farm.farmId === farmId)) {
       return res
         .status(400)
         .json({ message: 'Duplicate farmId generated. Please try again.' });
     }
 
-    // Convert the farmersEstarea to a number
+    // 4) Convert farmersEstarea to a number
     const numericEstarea = parseFloat(farmersEstarea) || 0;
 
-    // Create the new Farm object according to your updated schema
+    // 5) Build the new Farm object
+    // Notice we only add boundary if it exists in the request
     const newFarm = {
       farmId,
       farmName,
@@ -1759,14 +1761,14 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
       mandal: mandal || '',
 
       // GeoJSON fields
-      location,  // a Point with [longitude, latitude, elevation]
-      ...(boundary && { boundary }),
+      location, // a Point with [longitude, latitude, elevation]
+      ...(boundary && { boundary }), // Only include boundary if provided
     };
 
-    // Add the new farm to the farms array
+    // 6) Add the new farm to the farms array
     farmer.farms.push(newFarm);
 
-    // Optionally update the profileCompleteness
+    // 7) Optionally update the profileCompleteness
     if (farmer.profileCompleteness < 100) {
       farmer.profileCompleteness = Math.min(
         farmer.profileCompleteness + 5,
@@ -1774,17 +1776,20 @@ app.post('/api/farmers/:farmerId/farms', async (req, res) => {
       );
     }
 
-    // Save the updated farmer document
+    // 8) Save the updated farmer document
     await farmer.save();
 
-    return res
-      .status(201)
-      .json({ message: 'Farm saved successfully.', farm: newFarm });
+    return res.status(201).json({
+      message: 'Farm saved successfully.',
+      farm: newFarm,
+    });
+
   } catch (error) {
     console.error('Error saving farm:', error);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 });
+
 
   
   
