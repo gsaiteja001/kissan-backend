@@ -213,15 +213,7 @@ const CropDetailsSchema = new Schema({
   },
   farmId: { 
     type: String, 
-    required: true,
-    validate: {
-      validator: function(v) {
-        // 'this' refers to the current crop document
-        // 'this.parent()' refers to the farmer document
-        return this.parent().farms.some(farm => farm.farmId === v);
-      },
-      message: props => `Farm ID '${props.value}' does not exist in the farmer's farms.`,
-    },
+    required: false,
   },
   
   area: { type: Number, required: false }, // in sq meters
