@@ -20,12 +20,12 @@ const ShippingInfoDetailsSchema = new Schema({
   estimatedDeliveryDate: { type: Date, required: false },
   estimatedDeliveryTime: { type: String, required: false },
   threesholdDeliveryDate: { type: Date, required: false },
-  deliveryType: { type: String, enum: ['Hazardous', 'Fragile','Standard'], required: false },
+  deliveryType: { type: String, enum: ['Hazardous', 'Fragile'], required: false },
 }, { _id: false });
 
 // Subschema for Order Items (updated)
 const OrderItemSchema = new Schema({
-  orderId: { type: String, required: false }, // Added orderId for each order item
+  orderId: { type: String, required: true }, // Added orderId for each order item
   productId: { type: String, required: true, },
   variantId: { type: String, required: false,  },
   productName: { type: String, required: true },
@@ -45,7 +45,7 @@ const OrderItemSchema = new Schema({
   hazardous: { type: Boolean, required: false, default: false },
   fragile: { type: Boolean, required: false, default: false },
   itemType: { type: String, required: false, enum: ['Chemical', 'Fertilizer', 'Tool', 'Gardening Equipment', 'Others'] },
-  fulfillingWarehouseId: { type: String, required: true },
+  fulfillingWarehouseId: { type: String, required: true, ref: 'Warehouse' },
   shippingInfoDetails: { type: ShippingInfoDetailsSchema, required: false } // New shipping info per order item
 }, { _id: false });
 
@@ -80,8 +80,8 @@ const OrderStatusHistorySchema = new Schema({
 // Main Order Schema (removed shippingDetails field)
 const OrderSchema = new Schema(
   {
-    orderId: { type: String, default: uuidv4, },
-    farmerId: { type: String, required: false, },
+    orderId: { type: String, default: uuidv4, unique: true, immutable: true, trim: true },
+    farmerId: { type: String, required: false, ref: 'Farmer' },
     orderItems: { 
       type: [OrderItemSchema], 
       required: true, 
@@ -240,59 +240,59 @@ OrderSchema.post('findOneAndUpdate', async function(doc, next) {
   next();
 });
 
-// // Helper function to create SalesTransaction and StockTransaction
-// async function createSalesAndStockTransaction(order, item, session) {
-//   const salesProductsData = [{
-//     productId: item.productId,
-//     quantity: item.quantity,
-//     unitPrice: item.unitPrice,
-//     totalPrice: item.totalPrice,
-//     taxes: 0, // Adjust based on business logic
-//     otherCharges: 0, // Adjust based on business logic
-//     totalCost: item.totalCost, // Ensure totalCost is defined or calculate accordingly
-//   }];
+// Helper function to create SalesTransaction and StockTransaction
+async function createSalesAndStockTransaction(order, item, session) {
+  const salesProductsData = [{
+    productId: item.productId,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    totalPrice: item.totalPrice,
+    taxes: 0, // Adjust based on business logic
+    otherCharges: 0, // Adjust based on business logic
+    totalCost: item.totalCost, // Ensure totalCost is defined or calculate accordingly
+  }];
 
-//   const SalesTransaction = mongoose.model('SalesTransaction');
-//   const salesTransaction = new SalesTransaction({
-//     orderId: order.orderId,
-//     productId: item.productId,
-//     warehouseId: item.fulfillingWarehouseId,
-//     products: salesProductsData,
-//     paymentStatus: order.paymentDetails ? order.paymentDetails.paymentStatus : 'Pending',
-//     paymentDetails: order.paymentDetails || {},
-//     notes: order.adminRemarks || order.customerRemarks || '',
-//   });
-//   await salesTransaction.save({ session });
+  const SalesTransaction = mongoose.model('SalesTransaction');
+  const salesTransaction = new SalesTransaction({
+    orderId: order.orderId,
+    productId: item.productId,
+    warehouseId: item.fulfillingWarehouseId,
+    products: salesProductsData,
+    paymentStatus: order.paymentDetails ? order.paymentDetails.paymentStatus : 'Pending',
+    paymentDetails: order.paymentDetails || {},
+    notes: order.adminRemarks || order.customerRemarks || '',
+  });
+  await salesTransaction.save({ session });
 
-//   const stockOutProducts = [{
-//     productId: item.productId,
-//     variantId: item.variantId || null,
-//     quantity: item.quantity,
-//     unit: 'units', // Adjust based on unit logic
-//     unitPrice: item.unitPrice,
-//   }];
+  const stockOutProducts = [{
+    productId: item.productId,
+    variantId: item.variantId || null,
+    quantity: item.quantity,
+    unit: 'units', // Adjust based on unit logic
+    unitPrice: item.unitPrice,
+  }];
 
-//   const StockTransaction = mongoose.model('StockTransaction');
-//   const stockOutTransaction = new StockTransaction({
-//     transactionType: 'stockOut',
-//     warehouseId: item.fulfillingWarehouseId,
-//     products: stockOutProducts,
-//     performedBy: 'System', // Adjust based on your logic
-//     notes: `Stock out for order ${order.orderId}, product ${item.productId}`,
-//     relatedTransactionType: 'SalesTransaction',
-//     relatedTransaction: salesTransaction._id,
-//   });
-//   await stockOutTransaction.save({ session });
+  const StockTransaction = mongoose.model('StockTransaction');
+  const stockOutTransaction = new StockTransaction({
+    transactionType: 'stockOut',
+    warehouseId: item.fulfillingWarehouseId,
+    products: stockOutProducts,
+    performedBy: 'System', // Adjust based on your logic
+    notes: `Stock out for order ${order.orderId}, product ${item.productId}`,
+    relatedTransactionType: 'SalesTransaction',
+    relatedTransaction: salesTransaction._id,
+  });
+  await stockOutTransaction.save({ session });
 
-//   salesTransaction.stockTransaction = stockOutTransaction._id;
-//   await salesTransaction.save({ session });
-// }
+  salesTransaction.stockTransaction = stockOutTransaction._id;
+  await salesTransaction.save({ session });
+}
 
-// // Indexes for Optimization
-// OrderSchema.index({ orderId: 1 });
-// OrderSchema.index({ farmerId: 1 });
-// OrderSchema.index({ 'orderItems.fulfillingWarehouseId': 1 });
-// OrderSchema.index({ orderStatus: 1 });
-// OrderSchema.index({ orderDate: -1 });
+// Indexes for Optimization
+OrderSchema.index({ orderId: 1 });
+OrderSchema.index({ farmerId: 1 });
+OrderSchema.index({ 'orderItems.fulfillingWarehouseId': 1 });
+OrderSchema.index({ orderStatus: 1 });
+OrderSchema.index({ orderDate: -1 });
 
 module.exports = mongoose.model('Order', OrderSchema);

@@ -4,8 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 
 // Subschema for Agent's Credentials
 const AgentCredentialsSchema = new Schema({
-  username: { type: String, required: true, unique: true },
-  passwordHash: { type: String, required: true }, // store hashed passwords
+  username: { type: String, required: false, unique: true },
+  passwordHash: { type: String, required: false }, // store hashed passwords
   authenticationMethod: {
     type: String,
     enum: ['email/password', 'oauth'],
@@ -29,8 +29,8 @@ const AgentPerformanceSchema = new Schema({
   averageResponseTime: { type: Number, default: 0 }, // in minutes
   reviews: [
     {
-      reviewer: { type: String, required: true }, // Name of the reviewer (could be a farmer)
-      rating: { type: Number, min: 1, max: 5, required: true }, // Rating out of 5
+      reviewer: { type: String, required: false }, // Name of the reviewer (could be a farmer)
+      rating: { type: Number, min: 1, max: 5, required: false }, // Rating out of 5
       comment: { type: String, trim: true },
       date: { type: Date, default: Date.now },
     },
@@ -39,12 +39,12 @@ const AgentPerformanceSchema = new Schema({
 
 // Subschema for Group Information
 const GroupSchema = new Schema({
-  groupId: { type: String, required: true },
-  groupName: { type: String, required: true },
+  groupId: { type: String, required: false },
+  groupName: { type: String, required: false },
   permissions: {
     type: [String],
     enum: ['manage-tickets', 'view-tickets', 'assign-tickets', 'resolve-tickets', 'transfer-tickets', 'admin'],
-    required: true,
+    required: false,
   },
 }, { _id: false });
 
@@ -52,12 +52,16 @@ const GroupSchema = new Schema({
 const AgentSchema = new Schema(
   {
     agentId: { type: String, default: uuidv4, immutable: true },
-    fullName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true },
+    userId: {
+        type: String,
+        required: false,
+      },
+    fullName: { type: String, required: false, trim: true },
+    email: { type: String, required: false, unique: true },
     phoneNumber: { type: String, required: false },
-    role: { type: String, required: true, enum: ['Agent', 'Admin','TeamLeader'], default: 'Agent' },
+    role: { type: String, required: false, enum: ['Agent', 'Admin','TeamLeader'], default: 'Agent' },
     profilePicture: { type: String, required: false },
-    credentials: { type: AgentCredentialsSchema, required: true },
+    credentials: { type: AgentCredentialsSchema, required: false },
     performance: { type: AgentPerformanceSchema, default: {} },
     group: [{ type: GroupSchema, required: true }],
     assignedTickets: [{ type: String, ref: 'FarmersTicket' }], // Tickets assigned to the agent

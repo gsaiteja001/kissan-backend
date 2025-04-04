@@ -18,6 +18,78 @@ const upload = multer({ dest: 'uploads/' });
 
 
 
+/**
+ * GET /api/products/crops
+ * Returns each product's productId and a list of crops from usageInstructions.en.
+ * Products with no valid crop (or with unparseable usageInstructions) are skipped.
+ * The response includes a count of the products returned.
+ */
+router.get('/crops', async (req, res) => {
+  try {
+    // 1. Fetch only productId and usageInstructions fields (using .lean() for performance)
+    const products = await Product.find({}, 'productId usageInstructions').lean();
+
+    const result = products.map((product) => {
+      let crops = [];
+      let usageStr = product?.usageInstructions?.en;
+
+      if (usageStr && typeof usageStr === 'string') {
+        // Trim the string and remove any leading characters until a valid JSON token is found.
+        usageStr = usageStr.trim();
+        if (usageStr && usageStr[0] !== '{' && usageStr[0] !== '[') {
+          usageStr = usageStr.replace(/^[^{\[]+/, '');
+        }
+
+        let parsed;
+        try {
+          // First, try parsing the cleaned string as-is.
+          parsed = JSON.parse(usageStr);
+        } catch (error) {
+          // If that fails, attempt to wrap the string in an array and parse again.
+          try {
+            parsed = JSON.parse(`[${usageStr}]`);
+          } catch (error2) {
+            // If parsing still fails, log the error and leave parsed as null.
+            console.error(`Failed to parse usageInstructions for productId ${product.productId}:`, error2);
+            parsed = null;
+          }
+        }
+
+        // If parsing succeeded, ensure we have an array.
+        if (parsed) {
+          if (!Array.isArray(parsed)) {
+            parsed = [parsed];
+          }
+          // Extract non-empty 'crop' values.
+          crops = parsed
+            .filter(item => item && typeof item.crop === 'string' && item.crop.trim() !== '')
+            .map(item => item.crop.trim());
+        }
+      }
+
+      return {
+        productId: product.productId,
+        crops
+      };
+    });
+
+    // 3. Exclude products with an empty crops array.
+    const filteredResult = result.filter(product => product.crops.length > 0);
+
+    // 4. Return the final count and the list of products.
+    res.json({
+      count: filteredResult.length,
+      products: filteredResult
+    });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
+});
+
+
+
+
 // PUT endpoint to update variantIds
 router.put('/update-variant-ids', async (req, res) => {
   try {

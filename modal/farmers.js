@@ -72,9 +72,11 @@ const FarmDetailsSchema = new Schema({
       type: String,
       enum: ['Polygon'],
       default: 'Polygon',
+      required: true,
     },
     coordinates: {
       type: [[[Number]]], // [[[longitude, latitude, elevation], ...], ...]
+      required: true,
     },
   },
 });
@@ -169,6 +171,7 @@ const CropDetailsSchema = new Schema({
   cropId: { type: String, required: false, trim: true },
   name: { type: String, required: false, trim: true },
   variety: { type: String, required: false, trim: true },
+  images: [{ type: String, required: false}],
   plantingDate: { type: Date, required: false },
   expectedHarvestDate: { type: Date, required: false },
   actualHarvestDate: { type: Date, required: false },
@@ -213,7 +216,15 @@ const CropDetailsSchema = new Schema({
   },
   farmId: { 
     type: String, 
-    required: false,
+    required: true,
+    validate: {
+      validator: function(v) {
+        // 'this' refers to the current crop document
+        // 'this.parent()' refers to the farmer document
+        return this.parent().farms.some(farm => farm.farmId === v);
+      },
+      message: props => `Farm ID '${props.value}' does not exist in the farmer's farms.`,
+    },
   },
   
   area: { type: Number, required: false }, // in sq meters

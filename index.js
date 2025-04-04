@@ -109,6 +109,8 @@ app.use('/api/Agents', AgentsRoutes);
 const UserRoutes = require('./routes/UserRoutes');
 app.use('/api/User', UserRoutes);
 
+const TicketRoutes = require('./routes/ticketRoutes');
+app.use('/api/ticket', TicketRoutes);
 
 
 // Import the migration routes and mount them
@@ -1121,6 +1123,86 @@ app.get('/cropsTemplate', async (req, res) => {
 
 
 
+// Add this route to your crop template routes file
+app.post('/crop-templates/update-images', async (req, res) => {
+  try {
+      // Find all crop templates with empty images array
+      const cropTemplates = await CropTemplate.find({
+          $or: [
+              { images: { $exists: false } },
+              { images: { $size: 0 } }
+          ]
+      });
+
+      if (cropTemplates.length === 0) {
+          return res.status(200).json({
+              message: 'No crop templates with empty images found',
+              updatedCount: 0
+          });
+      }
+
+      // Prepare bulk update operations
+      const bulkOps = cropTemplates.map(template => {
+          const imageName = template.name
+              .toLowerCase()
+              .replace(/\s+/g, '-') // Replace spaces with hyphens
+              .replace(/[^a-z0-9-]/g, ''); // Remove special characters
+
+          const imageUrl = `https://gadupathi.s3.ap-south-1.amazonaws.com/${imageName}.png`;
+
+          return {
+              updateOne: {
+                  filter: { _id: template._id },
+                  update: {
+                      $set: {
+                          images: [imageUrl]
+                      }
+                  }
+              }
+          };
+      });
+
+      // Execute bulk update
+      const result = await CropTemplate.bulkWrite(bulkOps);
+
+      return res.status(200).json({
+          message: 'Image URLs updated successfully',
+          updatedCount: result.modifiedCount,
+          exampleUrl: `Sample generated URL: https://gadupathi.s3.ap-south-1.amazonaws.com/${cropTemplates[0].name.toLowerCase().replace(/\s+/g, '-')}.png`
+      });
+
+  } catch (error) {
+      console.error('Error updating crop template images:', error);
+      return res.status(500).json({
+          error: 'Failed to update crop template images',
+          details: error.message
+      });
+  }
+});
+
+
+/**
+ * GET /api/crops
+ * Retrieves the cropId and name of all active crop templates.
+ */
+app.get('/crops', async (req, res) => {
+  try {
+    // Find all active crop templates and project only cropId and name fields
+    const crops = await CropTemplate.find({ status: 'Active' }).select('cropId name');
+
+    // Return the count and the crops array in the response
+    res.json({
+      count: crops.length,
+      crops
+    });
+  } catch (error) {
+    console.error('Error fetching crops:', error);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+
+
 // GET /cropTemplates/:cropId - Retrieve crop template details by cropId
 app.get('/cropTemplates/:cropId', async (req, res) => {
   try {
@@ -1489,24 +1571,18 @@ app.put('/farmers/:farmerId/cart', async (req, res) => {
       return res.status(400).json({ message: 'cartItems must be an array.' });
     }
 
-    // Validate each cart item against the updated frontend schema:
-    // - productId: non-empty string
-    // - basePrice: number
-    // - quantity: positive number
-    // - variant: either null or a non-empty object (if provided)
-    // - deliveryInfo: must be a non-empty object
+    // Validate each cart item against the updated frontend schema
     const isValid = cartItems.every(item => {
       return item &&
-             typeof item.productId === 'string' && item.productId.trim() !== '' &&
-             typeof item.basePrice === 'number' &&
-             typeof item.quantity === 'number' && item.quantity > 0 &&
-             (item.variant === null || (typeof item.variant === 'object' && Object.keys(item.variant).length > 0)) &&
-             (item.deliveryInfo && typeof item.deliveryInfo === 'object' && Object.keys(item.deliveryInfo).length > 0);
+        typeof item.productId === 'string' && item.productId.trim() !== '' &&
+        typeof item.basePrice === 'number' &&
+        typeof item.quantity === 'number' && item.quantity > 0 &&
+        (item.variant === null || (typeof item.variant === 'object' && Object.keys(item.variant).length > 0));
     });
 
     if (!isValid) {
       return res.status(400).json({ 
-        message: 'Each cartItem must have productId, basePrice, quantity, and deliveryInfo. Optionally include a valid variant.' 
+        message: 'Each cartItem must have productId, basePrice, finalPrice, quantity and optionally a valid variant, discount, and deliveryInfo.' 
       });
     }
 
@@ -1690,107 +1766,64 @@ app.get('/api/farmers/:farmerId/address', async (req, res) => {
 
 
 
+
 // POST /api/farmers/:farmerId/farms
 app.post('/api/farmers/:farmerId/farms', async (req, res) => {
   const { farmerId } = req.params;
+  const { area, location, boundary, farmName } = req.body; 
 
-  // Destructure all the fields you expect from the frontend
-  const {
-    farmName,
-    boundary,        // optional GeoJSON Polygon
-    location,        // required: GeoJSON Point
-    farmersEstarea,  // numeric value entered by user
-    farmersEstareaUnit, // 'acres' or 'hectares'
-    revenueVillage,
-    mandal,
-    surveyNumber,
-    area,
-    // Optional fields (soilType, farmType, etc.)
-    soilType,
-    farmType,
-    farmingCapacity,
-  } = req.body;
+  console.log('farmerId', farmerId);
 
-  // Basic validation:
-  // Now boundary is NOT required, but farmName and location still are.
-  if (!farmName || !location) {
-    return res.status(400).json({
-      message: 'farmName and location are required.',
-    });
+  // Basic validation
+  if (!area || !location || !boundary || !farmName) {
+    return res.status(400).json({ message: 'Area, location, boundary, and farmName are required.' });
   }
 
   try {
-    // 1) Find the farmer by farmerId
+    // Find the farmer by farmerId
     const farmer = await farmers.findOne({ farmerId });
+
     if (!farmer) {
       return res.status(404).json({ message: 'Farmer not found.' });
     }
 
-    // 2) Generate a unique farmId
     const farmId = `FARMID${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-    // 3) Check if farmId already exists
-    if (farmer.farms.some((farm) => farm.farmId === farmId)) {
-      return res
-        .status(400)
-        .json({ message: 'Duplicate farmId generated. Please try again.' });
+    // Check if farmId already exists to maintain uniqueness
+    if (farmer.farms.some(farm => farm.farmId === farmId)) {
+      return res.status(400).json({ message: 'Duplicate farmId generated. Please try again.' });
     }
 
-    // 4) Convert farmersEstarea to a number
-    const numericEstarea = parseFloat(farmersEstarea) || 0;
-
-    // 5) Build the new Farm object
-    // Notice we only add boundary if it exists in the request
+    // Create a new farm entry
     const newFarm = {
       farmId,
-      farmName,
-      surveyNumber,
-      // Store the user’s raw entry & unit
-      farmersEstarea: numericEstarea,
-      farmersEstareaUnit: farmersEstareaUnit || 'acres', 
-      // Optionally also keep "area" in square meters
-      area: area || 0,
-
-      // Additional optional fields
-      soilType: soilType || '',
-      farmType: farmType || 'FullTimeFarmer',
-      farmingCapacity: farmingCapacity || 'Small',
-
-      // New address fields
-      revenueVillage: revenueVillage || '',
-      mandal: mandal || '',
-
-      // GeoJSON fields
-      location, // a Point with [longitude, latitude, elevation]
-      ...(boundary && { boundary }), // Only include boundary if provided
+      farmName: farmName || '',
+      area,
+      soilType: req.body.soilType || '',
+      farmType: req.body.farmType || 'FullTimeFarmer',
+      farmingCapacity: req.body.farmingCapacity || 'Small',
+      location,
+      surveyNumber: req.body.surveyNumber || '',
+      boundary,
     };
 
-    // 6) Add the new farm to the farms array
+    // Add the new farm to the farms array
     farmer.farms.push(newFarm);
 
-    // 7) Optionally update the profileCompleteness
+    // Optionally, update profileCompleteness
     if (farmer.profileCompleteness < 100) {
-      farmer.profileCompleteness = Math.min(
-        farmer.profileCompleteness + 5,
-        100
-      );
+      farmer.profileCompleteness = Math.min(farmer.profileCompleteness + 5, 100);
     }
 
-    // 8) Save the updated farmer document
+    // Save the updated farmer document
     await farmer.save();
 
-    return res.status(201).json({
-      message: 'Farm saved successfully.',
-      farm: newFarm,
-    });
-
+    return res.status(201).json({ message: 'Farm saved successfully.', farm: newFarm });
   } catch (error) {
     console.error('Error saving farm:', error);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 });
-
-
   
   
 

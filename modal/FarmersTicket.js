@@ -138,7 +138,7 @@ const FarmersTicketSchema = new Schema({
 
   // Agent (human or system) who is assigned to handle the ticket
   assignedAgent: {
-    agentId: { type: String, required: false, ref: 'User' }, // or 'Admin'
+    agentId: { type: String, required: false}, // or 'Admin'
     agentName: { type: String, required: false, trim: true },
   },
 
